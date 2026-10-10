@@ -1034,7 +1034,8 @@ function defaultData(){
     notiser:{expiry:{}, grad:{}, flytt:[]},
     gallring:{last:Date.now()},
     g6ReserveApplied:true,
-    komp2026OrderApplied:true
+    komp2026OrderApplied:true,
+    createdAt:Date.now(), unitImport:{}, unitSnooze:{}
   };
 }
 /* Om registerägaren redan lagt till t.ex. "Skarpskytt" som egen kompetens
@@ -1302,6 +1303,7 @@ function hydrateData(parsed){
   if(parsed.kompani===undefined) parsed.kompani = '';
   if(parsed.pluton===undefined) parsed.pluton = '';
   ensureKalAnslag(parsed);
+  ensureUnitImport(parsed);
   DATA = parsed;
   YEARS = computeYears();
   DATA.persons = (DATA.persons||[]).map(ensurePersonShape);
@@ -3111,7 +3113,7 @@ function renderStandardCard(g){
     <div class="card-head">
       <div class="card-title">${collapseBtnHtml(g.id)}<h3 id="gname-${g.id}" onclick="editGroupName('${g.id}')">${esc(g.name)}</h3>${sectionBadge('g:'+g.id)}</div>
       <div style="display:flex;align-items:center;gap:12px;">
-        <span class="card-count">${filled}/${g.slots.length} platser fyllda</span>
+        <span class="card-count">${filled}/${g.slots.length} platser fyllda${g.unit ? ' · '+unitImportLabel(g) : ''}</span>
         <button class="btn small cardOnlyOpen" onclick="openExportModal('group','${g.id}')">Exportera</button>
         <button class="btn small cardOnlyOpen" onclick="openSlackImportModal('${g.id}')">Importera från Slack</button>
         <button class="btn small" onclick="goGroup('${g.id}')">Öppna gruppen →</button>
@@ -3291,7 +3293,7 @@ function renderGroupStandard(gid){
     <div class="viewhead">
       <div>
         <h2 id="gname2-${g.id}" onclick="editGroupNameGroupView('${g.id}')">${esc(g.name)}</h2>
-        <div class="sub">${filled}/${g.slots.length} platser fyllda. Befattning och befattningsnummer hör till platsen, inte personen — klicka på dem för att ändra. Pilarna byter plats inom gruppen.</div>
+        <div class="sub">${filled}/${g.slots.length} platser fyllda.${g.unit ? ' '+unitImportLabel(g)+'.' : ''} Befattning och befattningsnummer hör till platsen, inte personen — klicka på dem för att ändra. Pilarna byter plats inom gruppen.</div>
       </div>
       <div class="headActions">
         <button class="btn small" onclick="toggleColumnPanel()">Ordna kolumner</button>
@@ -4780,13 +4782,13 @@ async function openShareExport(scope, gid){
   } else if(scope==='group'){
     const g = getGroup(gid);
     if(g && g.kind==='recruit' && !exportPersonsForGroup(gid).length){ alert('Markera minst en person i "'+g.name+'" att exportera.'); return; }
-    plain = groupSlackText(gid, true); title = g ? g.name : '';
+    plain = groupSlackText(gid, true) + (g && g.unit ? uimPayload() : ''); title = g ? g.name : '';
   } else if(scope==='unitnew' || scope==='unitall'){
     const g = getGroup(gid);
     plain = unitExportText(gid, scope==='unitnew' ? 'new' : 'all'); title = g ? g.name : '';
     if(!plain){ alert('Det finns ingen ny eller omfördelad personal tilldelad "'+title+'" att skicka.'); return; }
   } else {
-    plain = allGroupsSlackText() + exportExtrasPayload(); title = 'hela registret' + exportExtrasTitle();
+    plain = allGroupsSlackText() + uimPayload() + exportExtrasPayload(); title = 'hela registret' + exportExtrasTitle();
   }
   shareExportState = {plain, title, text:null, kind};
   const saved = await getRememberedShareCode();
@@ -4985,7 +4987,7 @@ function computeAllNotices(){
         sortKey:-250000, ackCall:'openGallringModal(true)', ackLabel:'Gallra…'});
     }
   }catch(e){}
-  const all = base.concat(extra, kompaniNotices(), calendarNotices(), boardNotices());
+  const all = base.concat(extra, kompaniNotices(), unitImportNotices(), calendarNotices(), boardNotices());
   const rank = n=>(n.level==='red'?0:1);
   all.sort((a,b)=> rank(a)-rank(b) || (a.sortKey||0)-(b.sortKey||0));
   return all;
@@ -5740,15 +5742,16 @@ async function calImportGo(){
 
 /* ---------- extradelar i en importerad text ---------- */
 function splitExtras(text){
-  const out = {text:'', cal:null, notes:null, bad:false};
-  out.text = String(text||'').replace(/^[ \t]*#PR-(KAL1|ANS1)[ \t]+(.+)$/gm, (m, tag, json)=>{
-    try{ const o = JSON.parse(json); if(tag==='KAL1') out.cal = o; else out.notes = o; }catch(e){ out.bad = true; }
+  const out = {text:'', cal:null, notes:null, uim:null, bad:false};
+  out.text = String(text||'').replace(/^[ \t]*#PR-(KAL1|ANS1|UIM1)[ \t]+(.+)$/gm, (m, tag, json)=>{
+    try{ const o = JSON.parse(json); if(tag==='KAL1') out.cal = o; else if(tag==='UIM1') out.uim = o; else out.notes = o; }catch(e){ out.bad = true; }
     return '';
   });
   return out;
 }
 async function routeImport(text, personsFn){
   const ex = splitExtras(text);
+  mergeUnitImport(ex.uim);
   if(!ex.cal && !ex.notes){
     if(ex.bad) alert('En del av texten (kalender/anslagstavla) kunde inte läsas och hoppades över.');
     personsFn(ex.text);
@@ -6545,6 +6548,7 @@ function unitImportApply(text, unitGid){
   });
   const missing = DATA.persons.filter(p=>p.groupId===unitGid && !seen.has(p.id)).map(p=>fullName(p));
 
+  ensureUnitImport(DATA); DATA.unitImport[unitGid] = Date.now(); delete DATA.unitSnooze[unitGid];
   closeModal();
   saveToDisk();
   view = {name:'home'};
@@ -6580,13 +6584,62 @@ function importDone(msg){
   };
 }
 
+/* ---------- påminnelse: enheter som inte lästs in på tre månader ---------- */
+function ensureUnitImport(d){
+  if(!d.unitImport) d.unitImport = {};
+  if(!d.unitSnooze) d.unitSnooze = {};
+  if(!d.createdAt) d.createdAt = Date.now();
+}
+function addMonthsMs(ms, n){ const d = new Date(ms); d.setMonth(d.getMonth()+n); return d.getTime(); }
+function unitImportLabel(g){
+  const last = DATA.unitImport && DATA.unitImport[g.id];
+  return last ? 'Senast inläst '+new Date(last).toLocaleDateString('sv-SE') : 'Aldrig inläst';
+}
+function unitImportNotices(){
+  const out = [];
+  if(!DATA || !DATA.unitImport) return out;
+  const now = Date.now();
+  unitGroups().forEach(u=>{
+    const last = DATA.unitImport[u.id] || 0;
+    const base = last || DATA.createdAt || now;
+    if(now < addMonthsMs(base, 3)) return;
+    if((DATA.unitSnooze[u.id]||0) > now) return;
+    const chef = u.unit==='tropp' ? 'troppchefen' : 'plutonchefen';
+    out.push({kind:'unitimport', section:'g:'+u.id, gid:u.id, level:'orange', groupName:u.name, personName:'',
+      text: last
+        ? `${u.name} har inte uppdaterats via import sedan ${new Date(last).toLocaleDateString('sv-SE')} (över tre månader). Be ${chef} skicka en ny export.`
+        : `${u.name} har aldrig lästs in och registret är över tre månader gammalt. Be ${chef} skicka en export.`,
+      sortKey:-240000, ackCall:`snoozeUnitImport('${u.id}')`, ackLabel:'Påminn om en vecka', showCall:`goGroup('${u.id}')`,
+      notifyKey:'ui|'+u.id+'|'+base, notifyTitle:u.name});
+  });
+  return out;
+}
+function snoozeUnitImport(id){
+  ensureUnitImport(DATA);
+  DATA.unitSnooze[id] = Date.now() + 7*86400000;
+  saveToDisk(); renderAll();
+}
+function uimPayload(){
+  if(!DATA || !DATA.unitImport || !Object.keys(DATA.unitImport).length) return '';
+  return '\n\n#PR-UIM1 '+JSON.stringify({v:1, m:DATA.unitImport});
+}
+function mergeUnitImport(o){
+  if(!o || !o.m || typeof o.m!=='object') return;
+  ensureUnitImport(DATA);
+  Object.keys(o.m).forEach(k=>{
+    const g = getGroup(k);
+    if(g && g.unit) DATA.unitImport[k] = Math.max(DATA.unitImport[k]||0, Number(o.m[k])||0);
+  });
+}
+
 const APP_CHANGELOG = [
   {version:'2026-10-10', title:'Kompaniregistret 1.0', items:[
     'Register för kompaniet, byggt som Personalregistret: Ledningsgrupp, STAB/Tross, Pluton 1–4, Personalreserv, Ny personal och Avveckling.',
     'Plutonerna och STAB/Tross visas som en lista med gruppetikett. Ordningen är låst och vakanta rader ligger kvar på sin plats.',
     'Läs in en plutons eller trupps export så fördelas personalen automatiskt: grupperna i enhetens block, reserv, rekryter och avgående i kompaniets egna listor med enhetsetikett.',
     'Fördela ny personal och reserv till en enhet och skriv en text som blir notis hos enheten. Enhetens chef väljer själv rad.',
-    'Efter varje import visas vad som hänt, och du kan ångra hela importen.'
+    'Efter varje import visas vad som hänt, och du kan ångra hela importen.',
+    'Appen håller reda på när varje pluton och STAB/Tross lästes in senast och ger en notis för den enhet som inte uppdaterats på tre månader.'
   ]},
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
