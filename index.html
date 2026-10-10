@@ -6631,6 +6631,11 @@ function mergeUnitImport(o){
 }
 
 const APP_CHANGELOG = [
+  {version:'2026-10-10.2', title:'Påminnelse och renare meny', items:[
+    'Påminnelse när en pluton eller STAB/Tross inte lästs in på tre månader.',
+    'Förklarande texter i menyn är borttagna så att den blir lugnare att läsa.',
+    'Uppdateringsnotisen "Det här är nytt" visas nu efter varje ny version.'
+  ]},
   {version:'2026-10-10', title:'Kompaniregistret 1.0', items:[
     'Register för kompaniet, byggt som Personalregistret: Ledningsgrupp, STAB/Tross, Pluton 1–4, Personalreserv, Ny personal och Avveckling.',
     'Plutonerna och STAB/Tross visas som en lista med gruppetikett. Ordningen är låst och vakanta rader ligger kvar på sin plats.',
@@ -6642,7 +6647,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v2';
+const SW_CACHE_VERSION = 'kompaniregister-v3';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 function maybeShowWhatsNew(){
