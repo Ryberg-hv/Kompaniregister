@@ -3985,6 +3985,7 @@ function renderPerson(pid, tab){
         <button class="btn small" onclick="copyPersonInfo('${p.id}', this)">Kopiera uppgifter</button>
         <button class="btn small" onclick="openPersonForm('${g.id}','${p.id}')">Redigera uppgifter</button>
         <button class="btn small" onclick="openReleaseModal('${p.id}')">Lämna ut uppgifter</button>
+        <button class="btn small" onclick="toggleWatch('${p.id}')" title="Ger notiser om personen även när raden hör till pluton eller tropp">${p.bevakad ? 'Sluta bevaka' : 'Bevaka'}</button>
       </div>
     </div>
     ${(()=>{
@@ -4989,7 +4990,7 @@ let NOTICES_CACHE = [];
 let NOTICE_PIDS = new Map();
 let noticeFilter = null;
 function computeAllNotices(){
-  const base = computeNotices().map(n=>Object.assign({section: n.gid ? 'g:'+n.gid : 'ovrigt', level:'orange'}, n));
+  const base = computeNotices().filter(kompNoticeWanted).map(n=>Object.assign({section: n.gid ? 'g:'+n.gid : 'ovrigt', level:'orange'}, n));
   const extra = [];
   /* gallring av Avveckling som väntar */
   try{
@@ -7092,6 +7093,26 @@ function mirrorRun(text, singleGid, scopeInfo){
 function confirmFullSlackImportNative(text){ return mirrorStart(text, null); }
 function confirmSlackImportTextNative(gid, text){ return mirrorStart(text, gid); }
 
+/* ---------- notiser: kompaniet bevakar sin egen ledning, inte plutonernas rader ---------- */
+function kompaniOwnsNotices(p){
+  if(!p) return true;
+  if(p.bevakad) return true;
+  const g = getGroup(p.groupId);
+  if(!g || g.id==='k1' || !g.unit) return true;           // ledningsgrupp och kompaniets listor
+  const b = String(personBefattning(p)||'').trim().toLowerCase();
+  return b==='plutc' || b==='stf plutc' || b==='tropp c';
+}
+function kompNoticeWanted(n){
+  if(!n || !n.pid) return true;
+  return kompaniOwnsNotices(DATA.persons.find(x=>x.id===n.pid));
+}
+function toggleWatch(pid){
+  const p = DATA.persons.find(x=>x.id===pid);
+  if(!p) return;
+  p.bevakad = !p.bevakad;
+  saveToDisk(); renderAll();
+}
+
 /* visar vad importen gjorde; användaren kan ångra hela importen */
 function importDone(msg){
   const snap = IMPORT_SNAP;
@@ -7185,6 +7206,10 @@ function ensureKok7(data){
 }
 
 const APP_CHANGELOG = [
+  {version:'2026-10-12.3', title:'Färre notiser', items:[
+    'Kompaniet får bara personnotiser för Ledningsgruppen, Tropp C, PlutC och Stf PlutC samt för Personalreserv, Ny personal och Avveckling. Notiser för GrpC, Stf GrpC och soldater hanteras av pluton och tropp. Statistiken påverkas inte.',
+    'Ny knapp Bevaka i personkortet: markerade personer ger notiser även när raden hör till pluton eller tropp.'
+  ]},
   {version:'2026-10-12.2', title:'Importen matchar på anställningsnummer', items:[
     'Vid inläsning från pluton eller STAB/Tross matchas personal först på anställningsnummer, sedan på namn. Personal i Ny personal, Personalreserv och Avveckling som redan finns blir inte längre dubletter, och plutonstillhörigheten skrivs över av den nya exporten.',
     'Står samma anställningsnummer redan hos en annan enhet hoppas personen över och tas upp i rapporten. Ändrat namn på samma nummer uppdateras och redovisas.',
@@ -7221,7 +7246,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v7';
+const SW_CACHE_VERSION = 'kompaniregister-v8';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 function maybeShowWhatsNew(){
