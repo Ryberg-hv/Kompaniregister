@@ -914,6 +914,8 @@ const DEFAULT_COMPETENCIES = [
   {id:'skarpskytt', label:'Skarpskytt', expiry:false, showInStats:true},
   {id:'prickskytt', label:'Prickskytt', expiry:false, showInStats:true},
   {id:'sjukvard', label:'Sjukvård', expiry:false, showInStats:true},
+  {id:'ssk', label:'SSK', expiry:false, showInStats:true},
+  {id:'instruktor', label:'Instruktör', expiry:false, showInStats:true},
   {id:'aktiv_instruktor', label:'Aktiv instruktör', expiry:false, showInStats:true},
   {id:'gu', label:'GU', expiry:false, showInStats:true},
   {id:'guf', label:'GUF', expiry:false, showInStats:true},
@@ -925,6 +927,13 @@ const DEFAULT_COMPETENCIES = [
   {id:'plutc3', label:'PlutC3', expiry:false, showInStats:false},
   {id:'ik1', label:'IK1', expiry:false, showInStats:false},
   {id:'ik2', label:'IK2', expiry:false, showInStats:false},
+  {id:'kompc1', label:'KompC 1', expiry:false, showInStats:true},
+  {id:'kompc2', label:'KompC 2', expiry:false, showInStats:true},
+  {id:'komp_stri', label:'Komp Stri', expiry:false, showInStats:true},
+  {id:'kvm1', label:'KVM 1', expiry:false, showInStats:true},
+  {id:'kvm2', label:'KVM 2', expiry:false, showInStats:true},
+  {id:'stabc', label:'STAB C', expiry:false, showInStats:true},
+  {id:'stri_led_sensor', label:'Stri-led Sensor', expiry:false, showInStats:true},
 ];
 
 /* ---------- grade (grad) ladder ----------
@@ -980,7 +989,7 @@ const RECRUIT_STEP_MAP = Object.fromEntries(RECRUIT_STEPS.map(s=>[s.key,s]));
 
 function slots(list){ return list.map(b=>({befattning:b, befattningsnummer:''})); }
 
-const UNIT_TEMPLATES = {"pluton": {"app": "pluton", "groups": [{"sg": "g1", "tag": "Grp 1", "name": "Grupp 1", "bef": ["PlutC", "Stf PlutC", "Signalist", "Signalist", "Soldat", "Hundförare", "Hundförare"]}, {"sg": "g2", "tag": "Grp 2", "name": "Grupp 2", "bef": ["GrpC", "Stf GrpC", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat"]}, {"sg": "g3", "tag": "Grp 3", "name": "Grupp 3", "bef": ["GrpC", "Stf GrpC", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat"]}, {"sg": "g4", "tag": "Grp 4", "name": "Grupp 4", "bef": ["GrpC", "Stf GrpC", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat"]}, {"sg": "g5", "tag": "Grp 5", "name": "Grupp 5", "bef": ["GrpC", "Stf GrpC", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat"]}], "lists": {"g6": "Personalreserv", "g7": "Ny personal (rekrytering)", "g8": "Avveckling"}}, "tropp": {"app": "tropp", "groups": [{"sg": "g1", "tag": "Chef", "name": "Chef", "bef": ["Tropp C"]}, {"sg": "g2", "tag": "STAB", "name": "STAB grupp", "bef": ["STABS GrpC", "Stf STAB GrpC", "STABS Assist", "STABS Assist", "STABSplats sold", "STABSplats sold", "MC Ordonnans", "MC Ordonnans", "MC Ordonnans", "MC Ordonnans"]}, {"sg": "g3", "tag": "Sjv", "name": "Sjukvårdsgrupp", "bef": ["SJV GrpC", "Stf SJV GrpC", "Komp SSK", "Sold SJV", "Sold SJV", "Sold SJV", "Sold SJV", "Sold SJV", "Komp SSK", "SJV trsp sold", "SJV trsp sold", "SJV trsp sold"]}, {"sg": "g4", "tag": "Kök", "name": "Kokgrupp", "bef": ["KOK GrpC", "Kock", "Kock", "Kock", "Kock", "Livsmedelssold", "Livsmedelssold", "Livsmedelssold"]}, {"sg": "g5", "tag": "Pack", "name": "Packgrupp", "bef": ["Pack GrpC", "Sold FOFÖ", "Sold FOFÖ", "Sold FOFÖ", "Mekaniker", "Mekaniker"]}], "lists": {"g6": "Personalreserv", "g7": "Ny personal (rekrytering)", "g8": "Avveckling"}}};
+const UNIT_TEMPLATES = {"pluton": {"app": "pluton", "groups": [{"sg": "g1", "tag": "Chefsgrupp", "name": "Chefsgrupp", "bef": ["PlutC", "Stf PlutC", "Signalist", "Signalist", "Soldat", "Hundförare", "Hundförare"]}, {"sg": "g2", "tag": "Grupp 1", "name": "Grupp 1", "bef": ["GrpC", "Stf GrpC", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat"]}, {"sg": "g3", "tag": "Grupp 2", "name": "Grupp 2", "bef": ["GrpC", "Stf GrpC", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat"]}, {"sg": "g4", "tag": "Grupp 3", "name": "Grupp 3", "bef": ["GrpC", "Stf GrpC", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat"]}, {"sg": "g5", "tag": "Grupp 4", "name": "Grupp 4", "bef": ["GrpC", "Stf GrpC", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat", "Soldat"]}], "lists": {"g6": "Personalreserv", "g7": "Ny personal (rekrytering)", "g8": "Avveckling"}}, "tropp": {"app": "tropp", "groups": [{"sg": "g1", "tag": "Chef", "name": "Chef", "bef": ["Tropp C"]}, {"sg": "g2", "tag": "STAB", "name": "STAB grupp", "bef": ["STABS GrpC", "Stf STAB GrpC", "STABS Assist", "STABS Assist", "STABSplats sold", "STABSplats sold", "MC Ordonnans", "MC Ordonnans", "MC Ordonnans", "MC Ordonnans"]}, {"sg": "g3", "tag": "Sjv", "name": "Sjukvårdsgrupp", "bef": ["SJV GrpC", "Stf SJV GrpC", "Komp SSK", "Sold SJV", "Sold SJV", "Sold SJV", "Sold SJV", "Sold SJV", "Komp SSK", "SJV trsp sold", "SJV trsp sold", "SJV trsp sold"]}, {"sg": "g4", "tag": "Kök", "name": "Kokgrupp", "bef": ["KOK GrpC", "Kock", "Kock", "Kock", "Kock", "Livsmedelssold", "Livsmedelssold"]}, {"sg": "g5", "tag": "Pack", "name": "Packgrupp", "bef": ["Pack GrpC", "Sold FOFÖ", "Sold FOFÖ", "Sold FOFÖ", "Mekaniker", "Mekaniker"]}], "lists": {"g6": "Personalreserv", "g7": "Ny personal (rekrytering)", "g8": "Avveckling"}}};
 function unitFlatSlots(type){
   const out = [];
   UNIT_TEMPLATES[type].groups.forEach(sg=>sg.bef.forEach((b,i)=>out.push({befattning:b, befattningsnummer:'', sg:sg.sg, r:i+1})));
@@ -1297,6 +1306,7 @@ function hydrateData(parsed){
   ensureBandvagnOrder(parsed);
   ensureAdr13Order(parsed);
   ensureKomp2026Order(parsed);
+  ensureInstruktorOrder(parsed);
   ensureCompetencyStatsFlags(parsed.competencies);
   if(!parsed.mal) parsed.mal = {};
   ensureNotiser(parsed);
@@ -1304,6 +1314,8 @@ function hydrateData(parsed){
   if(parsed.pluton===undefined) parsed.pluton = '';
   ensureKalAnslag(parsed);
   ensureUnitImport(parsed);
+  ensureKok7(parsed);
+  ensureCompOrder12(parsed);
   DATA = parsed;
   YEARS = computeYears();
   DATA.persons = (DATA.persons||[]).map(ensurePersonShape);
@@ -1428,6 +1440,7 @@ function saveToDisk(){
     const data = (DATA && currentFileName===target.file) ? DATA : target.data;
     if(!data || !vaultKey) return;
     try{
+      data.modifiedAt = Date.now();
       const payload = await encryptForStorage(JSON.stringify(data));
       localStorage.setItem(LS_PREFIX+target.file, payload);
       localStorage.setItem(LS_ACTIVE, target.file);
@@ -2863,8 +2876,8 @@ function primaryGroupsStatus(){
 function reserveBanner(){
   const st = primaryGroupsStatus();
   return st.full
-    ? `<div class="banner info" style="margin-bottom:16px;">Grupp 1–5 är fulltaliga (${st.filled}/${st.totalSlots}) — personalreserven kan användas.</div>`
-    : `<div class="banner info" style="margin-bottom:16px;">Grupp 1–5 har fortfarande ${st.vacant} lediga platser (${st.filled}/${st.totalSlots} fyllda). Personalreserven är avsedd att användas först när grupp 1–5 är fulltaliga.</div>`;
+    ? `<div class="banner info" style="margin-bottom:16px;">Alla grupper är fulltaliga (${st.filled}/${st.totalSlots}) — personalreserven kan användas.</div>`
+    : `<div class="banner info" style="margin-bottom:16px;">Grupperna har fortfarande ${st.vacant} lediga platser (${st.filled}/${st.totalSlots} fyllda). Personalreserven är avsedd att användas först när grupp 1–5 är fulltaliga.</div>`;
 }
 
 /* ---------- top bar ---------- */
@@ -3105,7 +3118,7 @@ function renderStandardCard(g){
     ? `<div style="padding:8px 14px;font-size:12px;color:var(--warn);">Det finns personal utan fast plats i gruppen — öppna gruppen för att tilldela plats.</div>` : '';
   const reserveNote = g.id==='g6'
     ? (()=>{ const st = primaryGroupsStatus();
-        return `<div style="padding:8px 14px;font-size:12px;color:${st.full?'var(--accent)':'var(--warn)'};">${st.full ? `Grupp 1–5 fulltaliga — reserven kan användas.` : `Grupp 1–5 har ${st.vacant} lediga platser kvar innan reserven är avsedd att användas.`}</div>`;
+        return `<div style="padding:8px 14px;font-size:12px;color:${st.full?'var(--accent)':'var(--warn)'};">${st.full ? `Alla grupper fulltaliga — reserven kan användas.` : `Grupperna har ${st.vacant} lediga platser kvar innan reserven är avsedd att användas.`}</div>`;
       })()
     : '';
   return `<div class="card kind-standard ${isCollapsed(g.id)?'collapsed':''}">
@@ -4782,13 +4795,13 @@ async function openShareExport(scope, gid){
   } else if(scope==='group'){
     const g = getGroup(gid);
     if(g && g.kind==='recruit' && !exportPersonsForGroup(gid).length){ alert('Markera minst en person i "'+g.name+'" att exportera.'); return; }
-    plain = groupSlackText(gid, true) + (g && g.unit ? uimPayload() : ''); title = g ? g.name : '';
+    plain = groupSlackText(gid, true) + (g && g.unit ? uimPayload() : '') + (g && !(g.kind==='recruit' && exportPersonsForGroup(gid).length < personsInGroup(gid).length) ? scopePayload([gid]) : ''); title = g ? g.name : '';
   } else if(scope==='unitnew' || scope==='unitall'){
     const g = getGroup(gid);
     plain = unitExportText(gid, scope==='unitnew' ? 'new' : 'all'); title = g ? g.name : '';
     if(!plain){ alert('Det finns ingen ny eller omfördelad personal tilldelad "'+title+'" att skicka.'); return; }
   } else {
-    plain = allGroupsSlackText() + uimPayload() + exportExtrasPayload(); title = 'hela registret' + exportExtrasTitle();
+    plain = allGroupsSlackText() + uimPayload() + scopePayload(DATA.groups.map(g=>g.id)) + exportExtrasPayload(); title = 'hela registret' + exportExtrasTitle();
   }
   shareExportState = {plain, title, text:null, kind};
   const saved = await getRememberedShareCode();
@@ -5742,9 +5755,9 @@ async function calImportGo(){
 
 /* ---------- extradelar i en importerad text ---------- */
 function splitExtras(text){
-  const out = {text:'', cal:null, notes:null, uim:null, bad:false};
-  out.text = String(text||'').replace(/^[ \t]*#PR-(KAL1|ANS1|UIM1)[ \t]+(.+)$/gm, (m, tag, json)=>{
-    try{ const o = JSON.parse(json); if(tag==='KAL1') out.cal = o; else if(tag==='UIM1') out.uim = o; else out.notes = o; }catch(e){ out.bad = true; }
+  const out = {text:'', cal:null, notes:null, uim:null, scope:null, bad:false};
+  out.text = String(text||'').replace(/^[ \t]*#PR-(KAL1|ANS1|UIM1|SCOPE1)[ \t]+(.+)$/gm, (m, tag, json)=>{
+    try{ const o = JSON.parse(json); if(tag==='KAL1') out.cal = o; else if(tag==='UIM1') out.uim = o; else if(tag==='SCOPE1') out.scope = o; else out.notes = o; }catch(e){ out.bad = true; }
     return '';
   });
   return out;
@@ -5752,6 +5765,7 @@ function splitExtras(text){
 async function routeImport(text, personsFn){
   const ex = splitExtras(text);
   mergeUnitImport(ex.uim);
+  IMPORT_SCOPE = ex.scope || null; setTimeout(()=>{ IMPORT_SCOPE = null; }, 0);
   if(!ex.cal && !ex.notes){
     if(ex.bad) alert('En del av texten (kalender/anslagstavla) kunde inte läsas och hoppades över.');
     personsFn(ex.text);
@@ -6275,6 +6289,12 @@ async function deleteRegisterByKey(key){
   } else { renderAll(); }
 }
 
+function ensureInstruktorOrder(data){
+  if(data.instruktorOrderApplied) return;
+  placeCompetencyAfter(data.competencies, 'instruktor', 'sjukvard');
+  data.instruktorOrderApplied = true;
+}
+
 /* ---------- Lämna ut uppgifter (PDF med sekretessmarkering) ---------- */
 const PDF_W = {R: [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584, 761, 556, 556, 222, 556, 333, 1000, 556, 556, 333, 1000, 667, 333, 1000, 556, 611, 556, 556, 222, 222, 333, 333, 350, 556, 1000, 333, 1000, 500, 333, 944, 556, 500, 667, 278, 333, 556, 556, 556, 556, 260, 556, 333, 737, 370, 556, 584, 333, 737, 333, 400, 584, 333, 333, 333, 556, 537, 278, 333, 333, 365, 556, 834, 834, 834, 611, 667, 667, 667, 667, 667, 667, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278, 722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611, 556, 556, 556, 556, 556, 556, 889, 500, 556, 556, 556, 556, 278, 278, 278, 278, 556, 556, 556, 556, 556, 556, 556, 584, 611, 556, 556, 556, 556, 500, 556, 500], B: [278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611, 975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556, 333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611, 611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584, 761, 556, 611, 278, 556, 500, 1000, 556, 556, 333, 1000, 667, 333, 1000, 611, 611, 611, 611, 278, 278, 500, 500, 350, 556, 1000, 333, 1000, 556, 333, 944, 611, 500, 667, 278, 333, 556, 556, 556, 556, 280, 556, 333, 737, 370, 556, 584, 333, 737, 333, 400, 584, 333, 333, 333, 611, 556, 278, 333, 333, 365, 556, 834, 834, 834, 611, 722, 722, 722, 722, 722, 722, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278, 722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611, 556, 556, 556, 556, 556, 556, 889, 556, 556, 556, 556, 556, 278, 278, 278, 278, 611, 611, 611, 611, 611, 611, 611, 584, 611, 611, 611, 611, 611, 556, 611, 556]};
 const CP1252_EXTRA = {'€':128,'‚':130,'„':132,'…':133,'†':134,'‡':135,'‰':137,'‹':139,'‘':145,'’':146,'“':147,'”':148,'•':149,'–':150,'—':151,'™':153,'›':155};
@@ -6539,11 +6559,7 @@ init();
 let IMPORT_SNAP = null;
 const COMPANY_LIST_OF = {g6:'k7', g7:'k8', g8:'k9'};
 function unitGroups(){ return DATA.groups.filter(g=>g.unit); }
-function slotTag(g, slot){
-  if(!g || !g.unit || !slot || !slot.sg) return '';
-  const sg = UNIT_TEMPLATES[g.unit].groups.find(x=>x.sg===slot.sg);
-  return sg ? '<span class="sgtag">'+esc(sg.tag)+'</span>' : '';
-}
+function slotTag(g, slot){ return ''; }
 function slotStartsGroup(g, idx){
   return !!(g && g.unit && idx>0 && g.slots[idx] && g.slots[idx-1] && g.slots[idx].sg!==g.slots[idx-1].sg);
 }
@@ -6631,7 +6647,13 @@ function unitPersonBlock(p, app, sgid, row){
   out.push('   Plats: '+app+' '+sgid+(row ? ' rad '+row : ''));
   const f = personSlackFieldsLine(p);
   if(f) out.push(f);
-  personSlackDetailLines(p).filter(l=>!UNIT_ONLY_LINES_RE.test(l)).forEach(l=>out.push(l));
+  const exId = new Set(excludedCompIds(app));
+  const exLabels = new Set(DATA.competencies.filter(c=>exId.has(c.id)).map(c=>c.label));
+  personSlackDetailLines(p).filter(l=>!UNIT_ONLY_LINES_RE.test(l)).forEach(l=>{
+    const m = l.match(/^(\s*Kompetenser:\s*)(.*)$/i);
+    if(m && exLabels.size){ const kept = m[2].split(/,\s*/).filter(x=>x && x!=='–' && !exLabels.has(x)); out.push(m[1]+(kept.length ? kept.join(', ') : '–')); }
+    else out.push(l);
+  });
   if(p.utText) out.push('   Notis från kompaniet: '+p.utText);
   out.push('');
   return out;
@@ -6717,10 +6739,23 @@ function unitImportStart(text, unitGid, apps){
     overlay.remove(); lsSet('lastunit', v); unitImportApply(text, v);
   };
 }
-function unitImportApply(text, unitGid){
-  const U = getGroup(unitGid), T = UNIT_TEMPLATES[U.unit];
-  if(/^Avtalsuppfyllnad:/im.test(text)){ alert('Texten är i ett äldre format. Exportera en ny kopia från den senaste versionen av registret.'); return; }
-  IMPORT_SNAP = JSON.stringify(DATA);
+/* kompaniregistrets egna kompetenser följer inte med till plutoner/tropp; SSK finns i tropp men inte i plutoner */
+const KOMP_ONLY_IDS = ['kompc1','kompc2','komp_stri','kvm1','kvm2','stabc','stri_led_sensor'];
+function excludedCompIds(app){ return app==='tropp' ? KOMP_ONLY_IDS : KOMP_ONLY_IDS.concat(['ssk']); }
+function normAnr(s){ return String(s||'').replace(/\s+/g,'').toLowerCase(); }
+function slackBlockAnr(block){
+  for(const line of block.lines){
+    if(SLACK_DETAIL_LABEL_RE.test(line)) continue;
+    const pair = slackFieldPairs(line).find(([l])=>l.toLowerCase()==='anställningsnummer');
+    if(pair) return normAnr(pair[1]);
+  }
+  return '';
+}
+function unitOwned(unitGid){
+  return DATA.persons.filter(p=> p.groupId===unitGid ||
+    ((p.groupId==='k7'||p.groupId==='k8'||p.groupId==='k9') && p.enhet===unitGid && !p.fordelad));
+}
+function unitImportParse(text, U, T){
   const norm = s=>String(s||'').trim().toLowerCase();
   const blocks = parseSlackBlocks(text);
   const sgByName = new Map();
@@ -6728,25 +6763,107 @@ function unitImportApply(text, unitGid){
   Object.keys(T.lists).forEach(k=>sgByName.set(norm(T.lists[k]), k));
   const validSg = new Set(T.groups.map(s=>s.sg).concat(Object.keys(T.lists)));
   const entries = [], skipped = [];
-  let curSg = null;
+  let curSg = null, anyPlats = false;
   blocks.forEach(block=>{
     if(!block.lines.length){ curSg = sgByName.get(norm(extractSlackName(block.header))) || null; return; }
     const name = extractSlackName(block.header);
     if(!name) return;
     const plats = slackBlockPlats(block);
     let sg = null, row = null;
-    if(plats && plats.app===T.app){ sg = plats.gid; row = plats.row; }
+    if(plats && plats.app===T.app){ sg = plats.gid; row = plats.row; anyPlats = true; }
     else if(curSg){ sg = curSg; }
     if(!sg || !validSg.has(sg)){ skipped.push(name); return; }
     const dash = block.header.indexOf(' — ');
-    entries.push({name, block, sg, row, nr:slackBlockBefNr(block), bef: dash>=0 ? block.header.slice(dash+3).trim() : ''});
+    entries.push({name, block, sg, row, bef: dash>=0 ? block.header.slice(dash+3).trim() : ''});
   });
-  if(!entries.length){ alert('Hittade ingen personal i texten.'); return; }
-
-  /* fler platser än mallen? lägg till dem i rätt grupp (pluton/tropp kan ha utökat sina grupper) */
-  const need = entries.filter(e=>!(e.sg in COMPANY_LIST_OF) && e.row!=null)
-    .sort((a,b)=>a.row-b.row);
-  need.forEach(e=>{
+  return {entries, skipped, anyPlats};
+}
+/* Räknar ut vad importen kommer att göra, utan att ändra något. */
+function unitImportPlan(text, unitGid){
+  const U = getGroup(unitGid), T = UNIT_TEMPLATES[U.unit];
+  const norm = s=>String(s||'').trim().toLowerCase();
+  const P = unitImportParse(text, U, T);
+  const owned = unitOwned(unitGid);
+  const ownedIds = new Set(owned.map(p=>p.id));
+  const used = new Set();
+  const plan = {U, T, entries:P.entries, skipped:P.skipped, anyPlats:P.anyPlats, conflict:[], added:[], noRow:[], updated:[], removed:[], emptied:[]};
+  const isListG = x=> x.groupId==='k7'||x.groupId==='k8'||x.groupId==='k9';
+  plan.renamed = [];
+  P.entries.forEach(e=>{
+    e.anr = slackBlockAnr(e.block);
+    const free = DATA.persons.filter(p=>!used.has(p.id));
+    const okForUnit = x=> ownedIds.has(x.id) || (x.enhet===unitGid && x.fordelad && (x.groupId==='k7'||x.groupId==='k8')) || (isListG(x) && !x.enhet);
+    let p = null, other = null;
+    if(e.anr){
+      const byNr = free.filter(x=>normAnr(x.anstallningsnummer)===e.anr);
+      p = byNr.find(okForUnit) || null;
+      if(!p && byNr.length) other = byNr[0];
+    }
+    if(!p && !other){
+      const same = free.filter(x=>norm(fullName(x))===norm(e.name) && (!e.anr || !normAnr(x.anstallningsnummer) || normAnr(x.anstallningsnummer)===e.anr));
+      p = same.find(x=>ownedIds.has(x.id))
+       || same.find(x=>x.enhet===unitGid && x.fordelad && (x.groupId==='k7'||x.groupId==='k8'))
+       || same.find(x=>isListG(x) && !x.enhet) || null;
+      if(!p && same.length) other = same[0];
+    }
+    if(!p && other){ const og = getGroup(other.groupId); plan.conflict.push(e.name+' ('+(og?og.name:'?')+(other.enhet && getGroup(other.enhet) ? ', '+getGroup(other.enhet).name : '')+')'); e.skip = true; return; }
+    if(p && norm(fullName(p))!==norm(e.name)){ e.rename = true; plan.renamed.push(fullName(p)+' → '+e.name); }
+    if(p) used.add(p.id);
+    e.p = p || null;
+    const isList = e.sg in COMPANY_LIST_OF;
+    if(!isList){
+      let idx = e.row!=null ? U.slots.findIndex(s=>s.sg===e.sg && s.r===e.row+1) : -1;
+      e.needSlot = (e.row!=null && idx<0);
+      e.idx = idx;
+      if(e.row==null){ e.toReserve = true; plan.noRow.push(e.name); }
+    }
+    if(!p) plan.added.push(e.name); else plan.updated.push(e.name);
+  });
+  plan.removed = owned.filter(p=>!used.has(p.id)).map(p=>p.id);
+  plan.removedNames = owned.filter(p=>!used.has(p.id)).map(p=>fullName(p)+(p.groupId===unitGid ? '' : ' ('+getGroup(p.groupId).name+')'));
+  const before = new Set(DATA.persons.filter(p=>p.groupId===unitGid && p.slotIndex!=null).map(p=>p.slotIndex));
+  const after = new Set(P.entries.filter(e=>!e.skip && !(e.sg in COMPANY_LIST_OF) && e.idx>=0).map(e=>e.idx));
+  plan.emptied = Array.from(before).filter(i=>!after.has(i)).sort((a,b)=>a-b);
+  return plan;
+}
+function unitImportApply(text, unitGid){
+  const U = getGroup(unitGid), T = UNIT_TEMPLATES[U.unit];
+  if(/^Avtalsuppfyllnad:/im.test(text)){ alert('Texten är i ett äldre format. Exportera en ny kopia från den senaste versionen av registret.'); return; }
+  const plan = unitImportPlan(text, unitGid);
+  if(!plan.entries.length){ alert('Hittade ingen personal i texten.'); return; }
+  if(!plan.anyPlats){
+    alert('Texten saknar radangivelser ("Plats: … rad …"), så kompaniregistret kan inte avgöra vilken rad var och en ska stå på. Be '+(U.unit==='tropp'?'troppchefen':'plutonchefen')+' göra en ny export med "Exportera allt" från en uppdaterad version av registret.');
+    return;
+  }
+  const lst = (a,n)=>a.slice(0,n).join(', ')+(a.length>n ? ' … och '+(a.length-n)+' till' : '');
+  const rowName = i=>{ const s = U.slots[i]; return s ? (i+1)+' ('+s.befattning+')' : String(i+1); };
+  const S = [];
+  S.push('Inläsning till "'+U.name+'". Det som står i texten ersätter det kompaniet har på enheten. Personal matchas på anställningsnummer, annars på namn.');
+  S.push('');
+  S.push('• '+plan.updated.length+' uppdateras, '+plan.added.length+' nya.');
+  S.push('• '+plan.removed.length+' tas bort helt (finns hos kompaniet men inte i texten)'+(plan.removedNames.length ? ': '+lst(plan.removedNames,12) : '')+'.');
+  S.push('• '+plan.emptied.length+' rader som är fyllda idag blir tomma'+(plan.emptied.length ? ': rad '+lst(plan.emptied.map(rowName),12) : '')+'.');
+  if(plan.renamed.length) S.push('• Namn ändras (samma anställningsnummer): '+lst(plan.renamed,12)+'.');
+  if(plan.noRow.length) S.push('• Utan radangivelse, läggs i Personalreserv: '+lst(plan.noRow,12)+'.');
+  if(plan.conflict.length) S.push('• Hoppas över, finns på annat ställe i kompaniet: '+lst(plan.conflict,12)+'.');
+  if(plan.skipped.length) S.push('• Hoppas över (okänd grupp): '+lst(plan.skipped,12)+'.');
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay'; overlay.style.zIndex = 265;
+  overlay.innerHTML = `<div class="modal" style="max-width:600px;"><h3>Läs in ${esc(U.name)}?</h3>
+    <div id="impPlan" style="white-space:pre-wrap;font-size:13px;max-height:50vh;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);padding:10px;background:#FAFBFC;">${esc(S.join('\n'))}</div>
+    <p style="color:var(--ink-soft);font-size:12px;margin-top:10px;">Efter inläsningen kan du ångra hela importen.</p>
+    <div class="modal-actions"><button class="btn" id="impCancel">Avbryt</button><button class="btn primary" id="impApply">Läs in</button></div></div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#impCancel').onclick = ()=>overlay.remove();
+  overlay.querySelector('#impApply').onclick = ()=>{ overlay.remove(); unitImportRun(text, unitGid); };
+}
+function unitImportRun(text, unitGid){
+  const U = getGroup(unitGid), T = UNIT_TEMPLATES[U.unit];
+  IMPORT_SNAP = JSON.stringify(DATA);
+  const plan = unitImportPlan(text, unitGid);
+  const keepIds = excludedCompIds(T.app).filter(id=>DATA.competencies.some(c=>c.id===id));
+  /* fler platser än mallen? lägg till dem i rätt grupp (enheten kan ha utökat sina grupper) */
+  plan.entries.filter(e=>!e.skip && e.needSlot).sort((a,b)=>a.row-b.row).forEach(e=>{
     const r = e.row+1;
     if(U.slots.some(s=>s.sg===e.sg && s.r===r)) return;
     let at = -1;
@@ -6755,88 +6872,226 @@ function unitImportApply(text, unitGid){
     U.slots.splice(at, 0, {befattning:e.bef||'Soldat', befattningsnummer:'', sg:e.sg, r});
     DATA.persons.forEach(p=>{ if(p.groupId===U.id && p.slotIndex!=null && p.slotIndex>=at) p.slotIndex++; });
   });
-
-  const byName = new Map();
-  DATA.persons.forEach(p=>{ const k = norm(fullName(p)); if(!byName.has(k)) byName.set(k, p); });
-  const seen = new Set();
-  const R = {added:[], updated:[], placed:[], toList:[], conflict:[], overflow:[]};
-  const stdEntries = [];
-  const claimed = new Set();
-  entries.forEach(e=>{
-    let p = byName.get(norm(e.name));
-    if(p && seen.has(p.id)) p = null;
-    const pg = p ? getGroup(p.groupId) : null;
-    if(p) seen.add(p.id);
-    /* finns personen hos en annan enhet eller i Ledningsgruppen: kompaniets uppgift gäller */
-    if(p && pg && pg.kind==='standard' && pg.id!==unitGid){ R.conflict.push(e.name+' ('+pg.name+')'); return; }
-    if(e.sg in COMPANY_LIST_OF){
-      const L = getGroup(COMPANY_LIST_OF[e.sg]);
-      if(!p){
-        p = emptyPerson(L.id); p.namn = e.name; p.enhet = unitGid; p.fordelad = false;
-        if(e.sg==='g6'){ p.srcSg = 'g6'; p.srcRow = e.row!=null ? e.row+1 : 0; }
-        DATA.persons.push(p); seen.add(p.id);
-        applySlackLines(p, L, e.block.lines, true);
-        R.added.push(e.name+' → '+L.name);
-        return;
-      }
-      if(pg && pg.id===unitGid){            // plutonen har flyttat personen från ett gruppblock till reserv/ny/avveckling
-        p.groupId = L.id; p.slotIndex = null; p.sortIndex = nextSortIndex(); p.enhet = unitGid; p.fordelad = false;
-        R.toList.push(e.name+' → '+L.name);
-      } else if(e.sg==='g8' && pg && pg.id!=='k9'){   // avveckling hos enheten gäller
-        p.groupId = 'k9'; p.slotIndex = null; p.sortIndex = nextSortIndex(); p.enhet = unitGid; p.fordelad = false;
-        R.toList.push(e.name+' → '+L.name);
-      }
-      applySlackLines(p, getGroup(p.groupId), e.block.lines, true);
-      R.updated.push(e.name);
-      return;
-    }
-    /* gruppblock: enhetens uppgift gäller */
-    e.g = U;
-    if(!p){ p = emptyPerson(unitGid); p.namn = e.name; DATA.persons.push(p); seen.add(p.id); e.isNew = true; e.needsPlace = true; }
-    else if(pg.id!==unitGid){
-      R.placed.push(e.name+' ('+pg.name+' → '+U.name+')');
-      p.groupId = unitGid; p.slotIndex = null; p.enhet = null; p.fordelad = false; p.srcSg = ''; p.srcRow = 0;
-      p.sortIndex = nextSortIndex(); e.needsPlace = true;
-    }
-    e.p = p;
-    if(e.row!=null){
+  /* ta bort det som inte längre finns hos enheten */
+  const gone = new Set(plan.removed);
+  DATA.persons = DATA.persons.filter(p=>!gone.has(p.id));
+  /* alla som står på enhetens rader lyfts av och placeras om exakt enligt texten */
+  DATA.persons.forEach(p=>{ if(p.groupId===unitGid) p.slotIndex = null; });
+  const R = {added:[], updated:[], toList:[], noRow:[]};
+  plan.entries.filter(e=>!e.skip).forEach(e=>{
+    const isList = e.sg in COMPANY_LIST_OF;
+    const targetGid = isList ? COMPANY_LIST_OF[e.sg] : (e.row==null ? 'k7' : unitGid);
+    let p = e.p;
+    const isNew = !p;
+    if(p && e.rename) p.namn = e.name;
+    if(isNew){ p = emptyPerson(targetGid); p.namn = e.name; DATA.persons.push(p); }
+    const kept = {};
+    keepIds.forEach(id=>{ if(p.kompetenser && p.kompetenser[id]) kept[id] = {...p.kompetenser[id]}; });
+    p.groupId = targetGid; p.slotIndex = null; p.fordelad = false;
+    if(targetGid===unitGid){
+      p.enhet = null; p.srcSg = ''; p.srcRow = 0;
       const idx = U.slots.findIndex(s=>s.sg===e.sg && s.r===e.row+1);
-      e.row = idx>=0 ? idx : null;
+      p.slotIndex = idx>=0 ? idx : null;
+    } else {
+      p.enhet = unitGid;
+      p.srcSg = (e.sg==='g6') ? 'g6' : ''; p.srcRow = (e.sg==='g6' && e.row!=null) ? e.row+1 : 0;
+      if(!isList) R.noRow.push(e.name);
     }
-    if(e.row==null && (e.isNew || e.needsPlace)){
-      /* ingen radangivelse: första lediga plats i samma grupp */
-      const taken = i=>claimed.has(i) || DATA.persons.some(x=>x!==p && x.groupId===unitGid && x.slotIndex===i);
-      const idx = U.slots.findIndex((s,i)=>s.sg===e.sg && !taken(i));
-      if(idx>=0) e.row = idx;
-    }
-    if(e.row!=null) claimed.add(e.row);
-    stdEntries.push(e);
+    if(isNew) p.sortIndex = nextSortIndex();
+    applySlackLines(p, getGroup(p.groupId), e.block.lines, true);
+    keepIds.forEach(id=>{ if(kept[id]) p.kompetenser[id] = kept[id]; });
+    (isNew ? R.added : R.updated).push(e.name);
   });
-  const evicted = placeSlackEntries(stdEntries);
-  stdEntries.forEach(e=>{
-    if(e.noRoom) R.overflow.push(e.name+' ('+U.name+')');
-    applySlackLines(e.p, U, e.block.lines, e.skipNr);
-    if(e.isNew) R.added.push(e.name+' → '+U.name); else R.updated.push(e.name);
-  });
-  const missing = DATA.persons.filter(p=>p.groupId===unitGid && !seen.has(p.id)).map(p=>fullName(p));
-
   ensureUnitImport(DATA); DATA.unitImport[unitGid] = Date.now(); delete DATA.unitSnooze[unitGid];
   closeModal();
   saveToDisk();
   view = {name:'home'};
   renderAll();
   const L = [];
-  L.push('Inläsning från '+(U.unit==='tropp' ? 'troppregistret' : 'plutonsregistret')+' till "'+U.name+'": '+R.updated.length+' uppdaterade, '+R.added.length+' nya.');
+  L.push('Inläsning från '+(U.unit==='tropp' ? 'troppregistret' : 'plutonsregistret')+' till "'+U.name+'": '+R.updated.length+' uppdaterade, '+R.added.length+' nya, '+plan.removed.length+' borttagna.');
   if(R.added.length) L.push('\nNya:\n  '+R.added.join('\n  '));
-  if(R.placed.length) L.push('\nPlacerade av enheten (från kompaniets listor):\n  '+R.placed.join('\n  '));
-  if(R.toList.length) L.push('\nFlyttade till kompaniets listor:\n  '+R.toList.join('\n  '));
-  if(R.conflict.length) L.push('\nHoppades över — finns hos en annan enhet i kompaniet (kompaniets uppgift gäller):\n  '+R.conflict.join('\n  '));
-  if(R.overflow.length) L.push('\nIngen ledig plats — ligger utan fast plats:\n  '+R.overflow.join('\n  '));
-  if(evicted.length) L.push('\nStod på en rad som enligt texten tillhör någon annan och har flyttats:\n  '+evicted.join('\n  '));
-  if(skipped.length) L.push('\nHoppades över (okänd grupp): '+skipped.join(', '));
-  if(missing.length) L.push('\nFinns i kompaniets lista över enheten men saknas i texten (har INTE tagits bort):\n  '+missing.slice(0,25).join('\n  ')+(missing.length>25?'\n  … och '+(missing.length-25)+' till':''));
+  if(plan.removedNames.length) L.push('\nBorttagna (fanns hos kompaniet men inte i texten):\n  '+plan.removedNames.join('\n  '));
+  if(plan.renamed.length) L.push('\nNamn ändrade (samma anställningsnummer):\n  '+plan.renamed.join('\n  '));
+  if(R.noRow.length) L.push('\nUtan radangivelse, lagda i Personalreserv:\n  '+R.noRow.join('\n  '));
+  if(plan.conflict.length) L.push('\nHoppades över — finns på annat ställe i kompaniet:\n  '+plan.conflict.join('\n  '));
+  if(plan.skipped.length) L.push('\nHoppades över (okänd grupp): '+plan.skipped.join(', '));
   importDone(L.join('\n'));
 }
+
+/* ---------- inläsning från en kollega i kompaniet: exakt spegel ---------- */
+let IMPORT_SCOPE = null;
+function scopePayload(gids){
+  return '\n\n#PR-SCOPE1 '+JSON.stringify({v:1, g:gids, t:Date.now()});
+}
+function mirrorPlan(text, singleGid, scopeInfo){
+  const norm = s=>String(s||'').trim().toLowerCase();
+  const blocks = parseSlackBlocks(text);
+  const groupByName = new Map(DATA.groups.map(g=>[norm(g.name), g]));
+  const headers = [];
+  blocks.forEach(block=>{
+    if(block.lines.length) return;
+    const hdr = extractSlackName(block.header);
+    if(/^_?Ingen personal registrerad_?$/i.test(hdr)) return;
+    const bold = /^\s*\*[^*]+\*\s*$/.test(block.header);
+    const byName = groupByName.get(norm(hdr)) || null;
+    if(bold || byName) headers.push({block, name:hdr, byName});
+  });
+  const allNamed = headers.length>0 && headers.every(h=>h.byName);
+  const positional = !allNamed && headers.length===DATA.groups.length;
+  headers.forEach((h,i)=>{ h.g = positional ? DATA.groups[i] : h.byName; });
+  const headerOf = new Map(headers.map(h=>[h.block, h]));
+  const entries = [], unknownGroups = [], skippedNoGroup = [];
+  let cur = null;
+  blocks.forEach(block=>{
+    if(!block.lines.length){
+      const h = headerOf.get(block);
+      if(h){ cur = h.g; if(!h.g && !unknownGroups.includes(h.name)) unknownGroups.push(h.name); }
+      return;
+    }
+    const name = extractSlackName(block.header);
+    if(!name) return;
+    const plats = slackBlockPlats(block);
+    let g = singleGid ? getGroup(singleGid) : ((plats && plats.app===APP_KEY) ? getGroup(plats.gid) : null);
+    if(!g) g = cur;
+    if(!g){ skippedNoGroup.push(name); return; }
+    const dash = block.header.indexOf(' — ');
+    entries.push({name, g, block, anr:slackBlockAnr(block), nr:slackBlockBefNr(block),
+      bef: dash>=0 ? block.header.slice(dash+3).trim() : '',
+      row: plats ? (singleGid || (plats.app===APP_KEY && plats.gid===g.id) ? plats.row : null) : null});
+  });
+  /* grupper där texten är komplett (personal som saknas i texten tas bort) */
+  const complete = new Set();
+  if(singleGid){ if(scopeInfo && Array.isArray(scopeInfo.g) && scopeInfo.g.includes(singleGid)) complete.add(singleGid); }
+  else if(scopeInfo && Array.isArray(scopeInfo.g)) scopeInfo.g.forEach(id=>{ if(getGroup(id)) complete.add(id); });
+  else if(allNamed || positional) headers.forEach(h=>{ if(h.g) complete.add(h.g.id); });
+  const S = new Set(complete);
+  entries.forEach(e=>S.add(e.g.id));
+  const used = new Set();
+  entries.forEach(e=>{
+    const free = DATA.persons.filter(p=>!used.has(p.id));
+    let p = null;
+    if(e.anr){
+      const byNr = free.filter(x=>normAnr(x.anstallningsnummer)===e.anr);
+      p = byNr.find(x=>x.groupId===e.g.id) || byNr[0] || null;
+    }
+    if(!p){
+      const same = free.filter(x=>S.has(x.groupId) && norm(fullName(x))===norm(e.name) &&
+        (!e.anr || !normAnr(x.anstallningsnummer) || normAnr(x.anstallningsnummer)===e.anr));
+      p = same.find(x=>x.groupId===e.g.id) || same[0] || null;
+    }
+    if(p){
+      used.add(p.id); e.p = p;
+      if(norm(fullName(p))!==norm(e.name)) e.renamed = fullName(p);
+      if(p.groupId!==e.g.id) e.moved = getGroup(p.groupId) ? getGroup(p.groupId).name : '?';
+    } else e.isNew = true;
+  });
+  const deleted = DATA.persons.filter(p=>complete.has(p.groupId) && !used.has(p.id));
+  const kept = DATA.persons.filter(p=>S.has(p.groupId) && !complete.has(p.groupId) && !used.has(p.id));
+  const before = new Set(), after = new Set();
+  DATA.persons.forEach(p=>{ const g = getGroup(p.groupId); if(g && g.kind==='standard' && complete.has(g.id) && p.slotIndex!=null) before.add(g.id+':'+p.slotIndex); });
+  entries.forEach(e=>{ if(e.g.kind==='standard' && e.row!=null && e.row>=0 && e.row<e.g.slots.length) after.add(e.g.id+':'+e.row); });
+  const emptied = Array.from(before).filter(k=>!after.has(k));
+  return {entries, complete, S, deleted, kept, emptied, unknownGroups, skippedNoGroup,
+    exportT: scopeInfo && scopeInfo.t ? Number(scopeInfo.t) : 0,
+    updated: entries.filter(e=>e.p).map(e=>e.name), added: entries.filter(e=>e.isNew).map(e=>e.name),
+    moved: entries.filter(e=>e.moved).map(e=>e.name+' ('+e.moved+' → '+e.g.name+')'),
+    renamed: entries.filter(e=>e.renamed).map(e=>e.renamed+' → '+e.name)};
+}
+function mirrorStart(text, singleGid){
+  const scopeInfo = IMPORT_SCOPE; IMPORT_SCOPE = null;
+  if(/^Avtalsuppfyllnad:/im.test(text)){
+    alert('Texten är i ett äldre format. Exportera en ny kopia från den senaste versionen av registret.');
+    return;
+  }
+  const plan = mirrorPlan(text, singleGid, scopeInfo);
+  if(!plan.entries.length && !plan.complete.size){ alert('Hittade ingen personal i texten.'); return; }
+  const lst = (a,n)=>a.slice(0,n).join(', ')+(a.length>n ? ' … och '+(a.length-n)+' till' : '');
+  const gname = id=>{ const g = getGroup(id); return g ? g.name : id; };
+  const S = [];
+  const newer = DATA.modifiedAt && plan.exportT && DATA.modifiedAt > plan.exportT + 2000;
+  if(newer) S.push('⚠ Du har ändrat registret efter att exporten gjordes (export '+new Date(plan.exportT).toLocaleString('sv-SE')+', din senaste ändring '+new Date(DATA.modifiedAt).toLocaleString('sv-SE')+'). Ändringar som skiljer sig från exporten skrivs över. Du kan ångra efteråt.', '');
+  else if(!plan.exportT) S.push('Texten saknar tidsangivelse (äldre export). Kontrollera att det är den senaste exporten.', '');
+  S.push(singleGid ? 'Inläsning till "'+gname(singleGid)+'". Gruppen blir en kopia av avsändarens.' : 'Inläsning av avsändarens register. Det som står i texten ersätter det du har i samma grupper. Dina gruppnamn ändras inte.');
+  S.push('');
+  S.push('• '+plan.updated.length+' uppdateras, '+plan.added.length+' nya.');
+  S.push('• '+plan.deleted.length+' tas bort (finns hos dig men inte i texten)'+(plan.deleted.length ? ': '+lst(plan.deleted.map(p=>fullName(p)+' ('+gname(p.groupId)+')'),12) : '')+'.');
+  S.push('• '+plan.emptied.length+' rader som är fyllda idag blir tomma.');
+  if(plan.moved.length) S.push('• Flyttas mellan grupper: '+lst(plan.moved,12)+'.');
+  if(plan.renamed.length) S.push('• Namn ändras (samma anställningsnummer): '+lst(plan.renamed,12)+'.');
+  if(plan.kept.length) S.push('• Lämnas orörda (texten visar inte hela gruppen): '+lst(plan.kept.map(p=>fullName(p)),12)+'.');
+  if(plan.unknownGroups.length) S.push('• Okända grupprubriker hoppas över: '+plan.unknownGroups.join(', ')+'.');
+  if(plan.skippedNoGroup.length) S.push('• Hoppas över (ingen grupp angiven): '+lst(plan.skippedNoGroup,12)+'.');
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay'; overlay.style.zIndex = 265;
+  overlay.innerHTML = `<div class="modal" style="max-width:600px;"><h3>Läs in från kollega?</h3>
+    <div id="impPlan" style="white-space:pre-wrap;font-size:13px;max-height:50vh;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);padding:10px;background:#FAFBFC;">${esc(S.join('\n'))}</div>
+    <p style="color:var(--ink-soft);font-size:12px;margin-top:10px;">Efter inläsningen kan du ångra hela importen.</p>
+    <div class="modal-actions"><button class="btn" id="impCancel">Avbryt</button><button class="btn primary" id="impApply">Läs in</button></div></div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#impCancel').onclick = ()=>overlay.remove();
+  overlay.querySelector('#impApply').onclick = ()=>{ overlay.remove(); mirrorRun(text, singleGid, scopeInfo); };
+}
+function mirrorReset(p, g){
+  FIELD_DEFS.forEach(f=>{
+    if(f.key==='namn' || f.key==='befattning') return;
+    if(f.key==='befattningsnummer' && g.kind==='standard') return;
+    p[f.key] = '';
+  });
+  DATA.competencies.forEach(c=>{ if(!p.kompetenser) p.kompetenser = {}; p.kompetenser[c.id] = {has:false, utgangsdatum:''}; });
+  YEARS.forEach(y=>{
+    if(!p.ovningar) p.ovningar = {};
+    p.ovningar[y] = {SOF:{status:null,anledning:''}, KFO:{status:null,anledning:''}};
+    if(!p.utvecklingsplan) p.utvecklingsplan = {};
+    p.utvecklingsplan[y] = '';
+  });
+  p.avtalsarInnanStart = 0; p.plutcSedanAr = ''; p.underUtbildning = false; p.grundutbKlar = false;
+  p.enhet = null; p.fordelad = false; p.utText = ''; p.srcSg = ''; p.srcRow = 0;
+}
+function mirrorRun(text, singleGid, scopeInfo){
+  IMPORT_SNAP = JSON.stringify(DATA);
+  const plan = mirrorPlan(text, singleGid, scopeInfo);
+  const gone = new Set(plan.deleted.map(p=>p.id));
+  DATA.persons = DATA.persons.filter(p=>!gone.has(p.id));
+  plan.entries.forEach(e=>{
+    if(e.isNew){ const p = emptyPerson(e.g.id); p.namn = e.name; DATA.persons.push(p); e.p = p; }
+    else {
+      const p = e.p;
+      if(e.renamed) p.namn = e.name;
+      if(p.groupId!==e.g.id){ p.groupId = e.g.id; }
+      p.slotIndex = null;
+    }
+    e.needsPlace = true;
+  });
+  /* personer som lyfts av ska inte blockera: placera exakt enligt texten */
+  const stdEntries = plan.entries.filter(e=>e.g.kind==='standard');
+  const evicted = placeSlackEntries(stdEntries);
+  const overflow = [];
+  stdEntries.forEach(e=>{ if(e.noRoom) overflow.push(e.name+' ('+e.g.name+')'); });
+  plan.entries.forEach(e=>{
+    const p = e.p, g = e.g;
+    if(e.isNew && e.noRoom){ DATA.persons.splice(DATA.persons.indexOf(p),1); return; }
+    mirrorReset(p, g);
+    if(g.kind!=='standard'){ p.befattning = e.bef || ''; p.slotIndex = null; p.sortIndex = nextSortIndex(); }
+    applySlackLines(p, g, e.block.lines, e.skipNr);
+  });
+  closeModal();
+  saveToDisk();
+  view = {name:'home'};
+  renderAll();
+  const L = [];
+  L.push(plan.updated.length+' uppdaterade, '+plan.added.length+' nya, '+plan.deleted.length+' borttagna.');
+  if(plan.added.length) L.push('\nNya:\n  '+plan.added.join('\n  '));
+  if(plan.deleted.length) L.push('\nBorttagna (fanns hos dig men inte i texten):\n  '+plan.deleted.map(p=>fullName(p)+' ('+groupName(p.groupId)+')').join('\n  '));
+  if(plan.moved.length) L.push('\nFlyttade mellan grupper:\n  '+plan.moved.join('\n  '));
+  if(plan.renamed.length) L.push('\nNamn ändrade (samma anställningsnummer):\n  '+plan.renamed.join('\n  '));
+  if(overflow.length) L.push('\nIngen ledig rad — utan fast plats:\n  '+overflow.join('\n  '));
+  if(evicted.length) L.push('\nFlyttade undan:\n  '+evicted.join('\n  '));
+  if(plan.kept.length) L.push('\nLämnades orörda (texten visade inte hela gruppen):\n  '+plan.kept.map(p=>fullName(p)).join('\n  '));
+  importDone(L.join('\n'));
+}
+function confirmFullSlackImportNative(text){ return mirrorStart(text, null); }
+function confirmSlackImportTextNative(gid, text){ return mirrorStart(text, gid); }
+
 /* visar vad importen gjorde; användaren kan ångra hela importen */
 function importDone(msg){
   const snap = IMPORT_SNAP;
@@ -6904,7 +7159,44 @@ function mergeUnitImport(o){
   });
 }
 
+/* ---------- uppdatering 12 oktober 2026: Kokgruppen 7 rader, nya kompetenser ---------- */
+function ensureCompOrder12(data){
+  if(data.compOrder12Applied) return;
+  placeCompetencyAfter(data.competencies, 'ssk', 'sjukvard');
+  let prev = 'ik2';
+  ['kompc1','kompc2','komp_stri','kvm1','kvm2','stabc','stri_led_sensor'].forEach(id=>{ placeCompetencyAfter(data.competencies, id, prev); prev = id; });
+  data.compOrder12Applied = true;
+}
+function ensureKok7(data){
+  if(data.kok7Applied) return;
+  data.kok7Applied = true;
+  const g = (data.groups||[]).find(x=>x.id==='k2');
+  if(!g || !g.slots) return;
+  const at = g.slots.findIndex(s=>s.sg==='g4' && s.r===8 && s.befattning==='Livsmedelssold');
+  if(at<0) return;
+  g.slots.splice(at, 1);
+  const moved = [];
+  (data.persons||[]).forEach(p=>{
+    if(p.groupId!=='k2' || p.slotIndex==null) return;
+    if(p.slotIndex===at){ p.groupId = 'k7'; p.slotIndex = null; p.enhet = 'k2'; p.fordelad = false; p.srcSg = ''; p.srcRow = 0; moved.push(p.namn || '(namnlös)'); }
+    else if(p.slotIndex>at) p.slotIndex--;
+  });
+  if(moved.length) setTimeout(()=>alert('Kokgruppen har nu 7 rader. '+moved.join(', ')+' stod på den borttagna raden i STAB/Tross och har flyttats till Personalreserv.'), 800);
+}
+
 const APP_CHANGELOG = [
+  {version:'2026-10-12.2', title:'Importen matchar på anställningsnummer', items:[
+    'Vid inläsning från pluton eller STAB/Tross matchas personal först på anställningsnummer, sedan på namn. Personal i Ny personal, Personalreserv och Avveckling som redan finns blir inte längre dubletter, och plutonstillhörigheten skrivs över av den nya exporten.',
+    'Står samma anställningsnummer redan hos en annan enhet hoppas personen över och tas upp i rapporten. Ändrat namn på samma nummer uppdateras och redovisas.',
+    'Inläsning från en kollega i kompaniet är nu en exakt spegel: grupper, rader, plutonstillhörighet och alla uppgifter blir som hos avsändaren, och personal som saknas i exporten tas bort. Före inläsningen visas en sammanfattning, och du varnas om du ändrat något efter att exporten gjordes. Gruppnamnen är dina egna och påverkas aldrig.'
+  ]},
+  {version:'2026-10-12', title:'Justering 12 oktober 2026', items:[
+    'Importen från en pluton eller STAB/Tross är nu en exakt spegel: ny export ersätter det kompaniet har på enheten, och en rad som är tom i exporten blir tom. Före inläsningen visas en sammanfattning, och efteråt kan du ångra.',
+    'Personal som finns hos kompaniet men inte i den nya exporten tas bort.',
+    'Gruppetiketterna i plutonernas listor är borttagna, den tunna linjen mellan grupperna finns kvar.',
+    'Kokgruppen har 7 rader. I befintliga register tas den sista Livsmedelssold-raden bort, och står någon på den flyttas personen till Personalreserv.',
+    'Nya kompetenser: KompC 1, KompC 2, Komp Stri, KVM 1, KVM 2, STAB C och Stri-led Sensor (efter IK2), samt SSK och Instruktör. De kompanispecifika följer inte med i exporter till plutoner och tropp.'
+  ]},
   {version:'2026-10-11', title:'Lämna ut uppgifter', items:[
     'I personkortet finns knappen "Lämna ut uppgifter". Den skapar en PDF med allt som finns om personen och anger vilket register utdraget kommer från.',
     'Innan PDF:en skapas bockar du i det som omfattas av sekretess eller kan skada den enskilde. Det blir svärtat i PDF:en, och texten finns inte kvar i filen.',
@@ -6929,7 +7221,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v5';
+const SW_CACHE_VERSION = 'kompaniregister-v7';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 function maybeShowWhatsNew(){
