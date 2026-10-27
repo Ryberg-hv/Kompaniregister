@@ -230,6 +230,19 @@
     width:100%;
   }
   .card.kind-recruit{border-left-color:var(--warn);}
+
+  .guGrid{display:flex;flex-wrap:wrap;gap:14px;}
+  .guCard{flex:1 1 220px;max-width:340px;border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;background:#FFFFFF;}
+  .guCard.guNow{flex:1 1 300px;max-width:440px;}
+  .guHead{font-weight:600;font-size:14px;}
+  .guSub{font-size:11px;color:var(--ink-soft);margin:2px 0 10px;}
+  .guRow{display:grid;grid-template-columns:96px 1fr 72px;align-items:center;gap:8px;margin:6px 0;font-size:12px;}
+  .guLbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .guTrack{height:12px;background:#EEEEEA;border-radius:3px;overflow:hidden;}
+  .guFill{height:100%;border-radius:3px;}
+  .guVal{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+  .guN{font-weight:400;color:var(--ink-soft);}
+  .guBlue{color:#1F5FBF;}
   .card.kind-offboarding{border-left-color:var(--danger);}
   .card-head{
     display:flex;
@@ -920,6 +933,7 @@ const DEFAULT_COMPETENCIES = [
   {id:'instruktor', label:'Instruktör', expiry:false, showInStats:true},
   {id:'aktiv_instruktor', label:'Aktiv instruktör', expiry:false, showInStats:true},
   {id:'gu', label:'GU', expiry:false, showInStats:true},
+  {id:'fmu', label:'FMU', expiry:false, showInStats:true},
   {id:'guf', label:'GUF', expiry:false, showInStats:true},
   {id:'grpc1', label:'GrpC1', expiry:false, showInStats:false},
   {id:'grpc2', label:'GrpC2', expiry:false, showInStats:false},
@@ -932,6 +946,7 @@ const DEFAULT_COMPETENCIES = [
   {id:'kompc1', label:'KompC 1', expiry:false, showInStats:true},
   {id:'kompc2', label:'KompC 2', expiry:false, showInStats:true},
   {id:'komp_stri', label:'Komp Stri', expiry:false, showInStats:true},
+  {id:'gu_stabstjanst', label:'GU Stabstjänst', expiry:false, showInStats:true},
   {id:'kvm1', label:'KVM 1', expiry:false, showInStats:true},
   {id:'kvm2', label:'KVM 2', expiry:false, showInStats:true},
   {id:'stabc', label:'STAB C', expiry:false, showInStats:true},
@@ -949,10 +964,10 @@ const GRADES = [
   {label:'Menig',        level:1,  bef:null, comps:['GUF'], minYears:null},
   /* Menig 1: GU, eller genomförd grundutbildning som blåbandare
      (4 avtalsövningar, noterad i notisrutan — se p.grundutbKlar). */
-  {label:'Menig 1',      level:2,  bef:null, comps:['GU'], orGrundutb:true, minYears:null},
-  {label:'Menig 2',      level:3,  bef:null, compsAny:['GU','GUF'], minYears:2},
-  {label:'Menig 3',      level:4,  bef:null, compsAny:['GU','GUF'], minYears:5},
-  {label:'Menig 4',      level:5,  bef:null, compsAny:['GU','GUF'], minYears:8},
+  {label:'Menig 1',      level:2,  bef:null, compsAny:['GU','FMU'], orGrundutb:true, minYears:null},
+  {label:'Menig 2',      level:3,  bef:null, compsAny:['GU','FMU','GUF'], minYears:2},
+  {label:'Menig 3',      level:4,  bef:null, compsAny:['GU','FMU','GUF'], minYears:5},
+  {label:'Menig 4',      level:5,  bef:null, compsAny:['GU','FMU','GUF'], minYears:8},
   {label:'Vicekorpral',  level:6,  bef:null, comps:['IK1','Aktiv instruktör'], minYears:null},
   {label:'Korpral',      level:7,  bef:['Stf GrpC'], comps:['GrpC 1'], minYears:null},
   {label:'Furir',        level:8,  bef:['GrpC'], comps:['GrpC 1','GrpC 2'], minYears:null},
@@ -965,6 +980,16 @@ const GRADES = [
      räknas från och med personens "Stf PlutC/PlutC sedan år" (se
      p.plutcSedanAr, satt via Avtalsövningar-vyn). */
   {label:'Löjtnant',     level:13, bef:['PlutC'], comps:['PlutC1','PlutC2'], minYears:null, minYearsInBef:2},
+  /* Ledningsgruppen (bara i Kompaniregistret). Flera rader med samma grad
+     ger olika vägar dit; den högsta nivån som uppfylls gäller. */
+  {label:'Sergeant',     level:10, bef:['KVM'], comps:['GU Stabstjänst','KVM 1'], minYears:null, kompOnly:true},
+  {label:'Sergeant',     level:10, bef:['UNDH Bef','STRI Bef','SENSOR Bef'], comps:['GU Stabstjänst'], minYears:null, kompOnly:true},
+  {label:'Fänrik',       level:12, bef:['Stf KompC'], comps:['KompC 1'], minYears:null, kompOnly:true},
+  {label:'Fanjunkare',   level:12, bef:['Komp Fanj'], comps:['Komp Stri','IK1','IK2'], minYears:null, kompOnly:true},
+  {label:'Fanjunkare',   level:12, bef:['KVM'], comps:['GU Stabstjänst','KVM 1','KVM 2'], minYears:null, minYearsInBef:3, sinceKey:'kvmSedanAr', sinceLabel:'KVM', orHasGrade:true, kompOnly:true},
+  {label:'Löjtnant',     level:13, bef:['KompC'], comps:['KompC 1','KompC 2'], minYears:null, kompOnly:true},
+  {label:'Löjtnant',     level:13, bef:['Stf KompC'], comps:['KompC 1'], minYears:null, minYearsInBef:3, sinceKey:'stfKompcSedanAr', sinceLabel:'Stf KompC', orHasGrade:true, kompOnly:true},
+  {label:'Kapten',       level:14, bef:['KompC'], comps:['KompC 1','KompC 2'], minYears:null, minYearsInBef:3, sinceKey:'kompcSedanAr', sinceLabel:'KompC', kompOnly:true},
 ];
 
 
@@ -1087,6 +1112,21 @@ function placeCompetencyAfter(list, id, afterId){
     const newAfterIdx = list.findIndex(c=>c.id===afterId);
     list.splice(newAfterIdx+1,0,item);
   }
+}
+/* uppdatering 13 oktober 2026: FMU direkt efter GU, GU Stabstjänst före KVM 1 */
+/* uppdatering 27 oktober 2026: register som körts med en äldre version
+   (uppladdningen 20 oktober) kan ha FMU på fel plats — lägg den efter GU en gång */
+function ensureFmu27(data){
+  if(data.fmu27Applied) return;
+  placeCompetencyAfter(data.competencies, 'fmu', 'gu');
+  placeCompetencyAfter(data.competencies, 'gu_stabstjanst', 'komp_stri');
+  data.fmu27Applied = true;
+}
+function ensureFmu13(data){
+  if(data.fmu13Applied) return;
+  placeCompetencyAfter(data.competencies, 'fmu', 'gu');
+  placeCompetencyAfter(data.competencies, 'gu_stabstjanst', 'komp_stri');
+  data.fmu13Applied = true;
 }
 function ensureBandvagnOrder(data){
   if(data.bandvagnOrderApplied) return;
@@ -1255,6 +1295,9 @@ function ensurePersonShape(p){
   if(p.plutcSedanAr===undefined) p.plutcSedanAr = '';
   if(p.underUtbildning===undefined) p.underUtbildning = false;
   if(p.grundutbKlar===undefined) p.grundutbKlar = false;
+  if(p.blaTyp===undefined) p.blaTyp = '';
+  SINCE_FIELDS.forEach(sf=>{ if(p[sf.key]===undefined) p[sf.key] = ''; });
+  normalizeGrundutb(p);
   return p;
 }
 function addYear(){
@@ -1318,6 +1361,8 @@ function hydrateData(parsed){
   ensureUnitImport(parsed);
   ensureKok7(parsed);
   ensureCompOrder12(parsed);
+  ensureFmu13(parsed);
+  ensureFmu27(parsed);
   DATA = parsed;
   YEARS = computeYears();
   DATA.persons = (DATA.persons||[]).map(ensurePersonShape);
@@ -1432,6 +1477,7 @@ let saveChain = Promise.resolve();
 let savePending = false;
 let saveFailedWarned = false;
 function saveToDisk(){
+  if(DATA && Array.isArray(DATA.persons)) DATA.persons.forEach(p=>normalizeGrundutb(p));
   if(!DATA || !currentFileName) return saveChain;
   if(savePending) return saveChain;
   savePending = true;
@@ -1541,7 +1587,7 @@ function personRowValues(p){
     return p[c.key];
   });
   row.push(p.underUtbildning
-    ? `Under utbildning (${Math.min(exerciseCount(p),GRUNDUTB_KRAV)}/${GRUNDUTB_KRAV})`
+    ? (p.blaTyp==='Specialist' ? 'Under utbildning (Specialist)' : `Under utbildning (${p.blaTyp==='FMU'?'FMU ':''}${Math.min(exerciseCount(p),GRUNDUTB_KRAV)}/${GRUNDUTB_KRAV})`)
     : (p.grundutbKlar ? 'Klar' : ''));
   DATA.competencies.forEach(c=>{
     const k = p.kompetenser && p.kompetenser[c.id];
@@ -1602,12 +1648,13 @@ function ovningStatusText(st){
 }
 function personSlackDetailLines(p){
   const lines = [];
-  if(p.underUtbildning) lines.push(`   Under utbildning: Ja (${Math.min(exerciseCount(p),GRUNDUTB_KRAV)}/${GRUNDUTB_KRAV} avtalsövningar)`);
+  if(p.underUtbildning) lines.push(`   Under utbildning: Ja${p.blaTyp ? ', '+p.blaTyp : ''}${p.blaTyp==='Specialist' ? '' : ` (${Math.min(exerciseCount(p),GRUNDUTB_KRAV)}/${GRUNDUTB_KRAV} avtalsövningar)`}`);
   else if(p.grundutbKlar) lines.push(`   Grundutbildning: Klar`);
   lines.push(`   Avtalsår innan ${YEAR_START}: ${p.avtalsarInnanStart||0}`);
   if(p.plutcSedanAr!==undefined && p.plutcSedanAr!==''){
     lines.push(`   Stf PlutC/PlutC sedan år: ${p.plutcSedanAr}`);
   }
+  SINCE_FIELDS.forEach(sf=>{ if(p[sf.key]!==undefined && p[sf.key]!=='') lines.push(`   ${sf.label} sedan år: ${p[sf.key]}`); });
 
   const compsHave = DATA.competencies.filter(c=>p.kompetenser && p.kompetenser[c.id] && p.kompetenser[c.id].has)
     .map(c=>{
@@ -1718,7 +1765,7 @@ function openExportModal(scope, gid){
    formatting. Instead, any line that isn't recognisable as one of our
    own "Label: value" detail lines is treated as the start of a new
    person. */
-const SLACK_DETAIL_LABEL_RE = /^(Plats|Under utbildning|Grundutbildning|Kompetenser|Avtalsövningar\s+\d{4}|Utvecklingsplan\s+\d{4}|Avtalsår innan\s+\d{4}|Stf PlutC\/PlutC sedan år|Notis från kompaniet|Enhet|Fördelad|Övrigt till enhet|Ursprung)\s*:/i;
+const SLACK_DETAIL_LABEL_RE = /^(Plats|Under utbildning|Grundutbildning|Kompetenser|Avtalsövningar\s+\d{4}|Utvecklingsplan\s+\d{4}|Avtalsår innan\s+\d{4}|Stf PlutC\/PlutC sedan år|KompC sedan år|Stf KompC sedan år|KVM sedan år|Notis från kompaniet|Enhet|Fördelad|Övrigt till enhet|Ursprung)\s*:/i;
 function slackFieldPairs(line){
   /* Matches "Label: value" runs without depending on a specific
      separator character between them (Slack round-trips can turn our
@@ -1830,6 +1877,7 @@ function applySlackCompetencies(p, line){
     p.kompetenser[comp.id].has = true;
     if(expiry) p.kompetenser[comp.id].utgangsdatum = expiry;
   });
+  normalizeGrundutb(p);
 }
 function applySlackAvtalOvning(p, line){
   const m = line.match(/^Avtalsövningar\s+(\d{4}):\s*(.*)$/i);
@@ -1864,7 +1912,7 @@ function applySlackYearsBefore(p, line){
   p.avtalsarInnanStart = Math.max(0, parseInt(m[1],10)||0);
 }
 function applySlackTraining(p, line){
-  if(/^Under utbildning:\s*Ja/i.test(line)){ p.underUtbildning = true; p.grundutbKlar = false; p.grad = 'Menig'; }
+  if(/^Under utbildning:\s*Ja/i.test(line)){ p.underUtbildning = true; p.grundutbKlar = false; p.grad = 'Menig'; p.blaTyp = /specialist/i.test(line) ? 'Specialist' : (/\bFMU\b/i.test(line) ? 'FMU' : ''); }
   else if(/^Under utbildning:\s*Nej/i.test(line)){ p.underUtbildning = false; }
   else if(/^Grundutbildning:\s*Klar/i.test(line)){ p.underUtbildning = false; p.grundutbKlar = true; }
 }
@@ -1887,6 +1935,7 @@ function applySlackLines(p, g, lines, skipBefNr){
     else if(/^Övrigt till enhet:/i.test(line)) p.utText = line.replace(/^Övrigt till enhet:\s*/i,'').trim();
     else if(/^Ursprung:/i.test(line)){ const m = line.match(/^Ursprung:\s*(\S+)(?:\s+rad\s+(\d+))?/i); if(m){ p.srcSg = m[1]; p.srcRow = m[2] ? parseInt(m[2],10) : 0; } }
     else if(/^Stf PlutC\/PlutC sedan år:/i.test(line)) applySlackPlutcSedanAr(p, line);
+    else if(/^(KompC|Stf KompC|KVM) sedan år:/i.test(line)) applySlackSince(p, line);
     else applySlackFieldsLine(p, g, line, skipBefNr);
   });
 }
@@ -2623,6 +2672,116 @@ function personBefattningDisplay(p){
   if(!abbrs.length) return bef;
   return (bef ? bef+' ' : '') + abbrs.join(' ');
 }
+
+/* ---------- Ledningsgruppen: år i befattningen ---------- */
+const SINCE_FIELDS = [
+  {key:'kompcSedanAr', label:'KompC', bef:'KompC', help:'Kapten kräver 3 uppfyllda avtalsår i befattningen KompC.'},
+  {key:'stfKompcSedanAr', label:'Stf KompC', bef:'Stf KompC', help:'Löjtnant kräver 3 uppfyllda avtalsår i befattningen Stf KompC, om personen inte redan har graden Löjtnant.'},
+  {key:'kvmSedanAr', label:'KVM', bef:'KVM', help:'Fanjunkare kräver 3 uppfyllda avtalsår i befattningen KVM, om personen inte redan har graden Fanjunkare.'},
+];
+function kompSinceInputsHtml(p){
+  const b = normBef(personBefattning(p));
+  return SINCE_FIELDS.filter(sf=>normBef(sf.bef)===b || (p[sf.key]!==undefined && p[sf.key]!=='')).map(sf=>`
+    <label style="font-weight:600;display:block;margin:14px 0 6px;">${esc(sf.label)} sedan år</label>
+    <input type="number" step="1" style="width:100px;" placeholder="—" value="${p[sf.key]||''}" onchange="setSinceYear('${p.id}','${sf.key}', this.value)">
+    <p style="margin-top:8px;color:var(--ink-soft);font-size:12px;">Det år personen tillträdde som ${esc(sf.label)}. Bara år från och med detta år räknas. ${esc(sf.help)}</p>`).join('');
+}
+function setSinceYear(pid, key, val){
+  const p = DATA.persons.find(x=>x.id===pid);
+  if(!p) return;
+  const n = parseInt(val,10);
+  p[key] = (val==='' || isNaN(n)) ? '' : n;
+  saveToDisk(); renderAll();
+}
+function applySlackSince(p, line){
+  const m = line.match(/^(KompC|Stf KompC|KVM) sedan år:\s*(-?\d+)/i);
+  if(!m) return;
+  const sf = SINCE_FIELDS.find(x=>x.label.toLowerCase()===m[1].toLowerCase());
+  if(sf) p[sf.key] = parseInt(m[2],10);
+}
+/* Kapten och Fanjunkare finns bara i Kompaniregistret. Vid export till en
+   pluton/tropp skickas i stället den högsta grad personen uppfyller där. */
+const KOMP_ONLY_GRADES = ['kapten','fanjunkare'];
+function baseGradeLabel(p){
+  let best = null;
+  GRADES.forEach(d=>{ if(!d.kompOnly && gradeTest(d,p) && (!best || d.level>=best.level)) best = d; });
+  return best ? best.label : '';
+}
+
+/* ---------- grundutbildning i statistiken ---------- */
+const GU_CATS = [
+  {k:'gu', label:'GU', color:'#4A6741'},
+  {k:'fmu', label:'FMU', color:'#6B5416'},
+  {k:'guf', label:'GUF', color:'#A9864A'},
+  {k:'utb', label:'Under utbildning', color:'#1F5FBF', blue:true},
+  {k:'saknar', label:'Saknar', color:'#A3A7AA'},
+];
+/* operativ personal: Ledningsgrupp, STAB/Tross, plutonerna och Personalreserv */
+function grundutbCounts(){
+  const ppl = DATA.persons.filter(p=>{ const k = groupKind(p.groupId); return k==='standard' || k==='reserve'; });
+  const c = {gu:0, fmu:0, guf:0, utb:0, saknar:0};
+  ppl.forEach(p=>{
+    const id = personGrundutbId(p);
+    if(id) c[id]++;
+    else if(isTrainee(p)) c.utb++;
+    else c.saknar++;
+  });
+  return {n:ppl.length, c};
+}
+function guDec31(y){ return new Date(y, 11, 31, 12, 0, 0).getTime(); }
+/* Årsbilden fryses första gången appen är öppen efter 31/12 kl 12:00. */
+function maybeSnapshotGrundutb(){
+  if(!DATA) return;
+  if(!DATA.grundutbSnap) DATA.grundutbSnap = {};
+  const now = Date.now(), y0 = new Date().getFullYear();
+  const Y = now>=guDec31(y0) ? y0 : y0-1;
+  if(DATA.grundutbSnap[Y]) return;
+  if((typeof DATA.createdAt==='number' ? DATA.createdAt : now) >= guDec31(Y)) return;  // registret fanns inte då
+  const s = grundutbCounts();
+  DATA.grundutbSnap[Y] = {t:now, n:s.n, c:s.c};
+  saveToDisk();
+}
+function guBarsHtml(s){
+  return GU_CATS.map(cat=>{
+    const v = (s.c && s.c[cat.k]) || 0;
+    const pct = s.n ? Math.round(100*v/s.n) : 0;
+    const blue = cat.blue ? ' guBlue' : '';
+    return `<div class="guRow"><div class="guLbl${blue}">${esc(cat.label)}</div>
+      <div class="guTrack"><div class="guFill" style="width:${pct}%;background:${cat.color};"></div></div>
+      <div class="guVal${blue}">${pct}%<span class="guN"> (${v})</span></div></div>`;
+  }).join('');
+}
+function renderGrundutbStats(){
+  const cur = grundutbCounts();
+  const snaps = Object.keys(DATA.grundutbSnap||{}).map(Number).filter(y=>!isNaN(y)).sort((a,b)=>b-a);
+  const snapCards = snaps.map(y=>{
+    const s = DATA.grundutbSnap[y];
+    const late = s.t && new Date(s.t).getFullYear()>y;
+    return `<div class="guCard"><div class="guHead">31 december ${y}</div>
+      <div class="guSub">${s.n} personer${late ? ' · fryst '+new Date(s.t).toLocaleDateString('sv-SE') : ''}</div>${guBarsHtml(s)}</div>`;
+  }).join('');
+  return `<div class="panel" style="margin-bottom:18px;">
+    <h3 style="font-size:15px;margin-bottom:12px;">Grundutbildning</h3>
+    <div class="guGrid">
+      <div class="guCard guNow"><div class="guHead">Just nu</div><div class="guSub">${cur.n} personer</div>${guBarsHtml(cur)}</div>
+      ${snapCards}
+    </div>
+    <p style="margin-top:12px;color:var(--ink-soft);font-size:12px;">Andel av personalen i Ledningsgrupp, STAB/Tross, plutonerna och Personalreserv. Blåbandare utan grundutbildning visas som under utbildning. Den 31 december kl 12:00 fryses fördelningen som en årsbild${snaps.length ? '' : ' — den första visas här efter nyår'}.</p>
+  </div>`;
+}
+function gusPayload(){
+  const s = DATA && DATA.grundutbSnap;
+  if(!s || !Object.keys(s).length) return '';
+  return '\n\n#PR-GUS1 '+JSON.stringify({v:1, s});
+}
+function mergeGrundutbSnap(o){
+  if(!o || !o.s || typeof o.s!=='object' || !DATA) return;
+  if(!DATA.grundutbSnap) DATA.grundutbSnap = {};
+  Object.keys(o.s).forEach(y=>{
+    const v = o.s[y];
+    if(v && v.c && typeof v.n==='number' && !isNaN(Number(y))) DATA.grundutbSnap[y] = v;
+  });
+}
 /* ---------- grade (grad) calculation ---------- */
 function normLabel(s){ return String(s||'').toLowerCase().replace(/[\s\-]/g,''); }
 const BEF_ALIAS = {'tropp c':'plutc', 'stabs grpc':'grpc', 'stf stab grpc':'stf grpc', 'sjv grpc':'grpc',
@@ -2670,8 +2829,50 @@ function exerciseCount(p){
   return n;
 }
 function isTrainee(p){ return !!(p && p.underUtbildning); }
+
+/* ---------- grundutbildning: GU, FMU eller GUF — bara en per person ----------
+   Ordningen anger vilken som behålls om flera råkar vara markerade
+   (t.ex. efter en import): FMU före GU före GUF. Markerar användaren en
+   ny grundutbildning tas den tidigare bort direkt. */
+const GRUNDUTB_IDS = ['fmu','gu','guf'];
+function personGrundutbId(p){
+  if(!p || !p.kompetenser) return null;
+  return GRUNDUTB_IDS.find(id=>p.kompetenser[id] && p.kompetenser[id].has) || null;
+}
+function normalizeGrundutb(p, keepId){
+  if(!p || !p.kompetenser) return;
+  const keep = keepId || personGrundutbId(p);
+  GRUNDUTB_IDS.forEach(id=>{ if(id!==keep && p.kompetenser[id] && p.kompetenser[id].has) p.kompetenser[id].has = false; });
+}
+/* blåbandare är antingen FMU (grundutbildning, 4 avtalsövningar) eller
+   Specialist (befattningsutbildning, avslutas manuellt). Tomt = ej valt. */
+function isSpecialistTrainee(p){ return isTrainee(p) && p.blaTyp==='Specialist'; }
+function traineeProgressShort(p){
+  if(isSpecialistTrainee(p)) return 'Specialist';
+  return (p.blaTyp==='FMU' ? 'FMU · ' : '') + Math.min(exerciseCount(p),GRUNDUTB_KRAV)+'/'+GRUNDUTB_KRAV+' avtalsövningar';
+}
+function askTraineeType(pid){
+  const p = DATA.persons.find(x=>x.id===pid);
+  if(!p) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `<div class="modal" style="max-width:440px;"><h3>Blåbandare</h3>
+    <p style="font-size:13px;margin-bottom:6px;"><strong>${esc(fullName(p))}</strong> är nu under utbildning. Välj vilken sorts blåbandare det gäller.</p>
+    <p style="font-size:12px;color:var(--ink-soft);"><strong>FMU</strong> — grundutbildning, klar efter ${GRUNDUTB_KRAV} avtalsövningar. <strong>Specialist</strong> — utbildas till en befattning och är blåbandare tills befattningsutbildningen är klar.</p>
+    <div class="modal-actions"><button class="btn" data-t="Specialist">Specialist</button><button class="btn primary" data-t="FMU">FMU</button></div></div>`;
+  overlay.querySelectorAll('[data-t]').forEach(b=>{ b.onclick = ()=>{ p.blaTyp = b.dataset.t; overlay.remove(); saveToDisk(); renderAll(); }; });
+  document.body.appendChild(overlay);
+}
+function gradeHeld(p, label){ return normLabel(p && p.grad)===normLabel(label); }
+/* nästa grad att sikta mot: lägsta högre grad som gäller personens befattning */
+function nextGradeDef(p, curLevel){
+  const higher = GRADES.filter(d=>d.level>curLevel).sort((a,b)=>a.level-b.level);
+  return higher.find(d=>!d.bef || personBefIn(p, d.bef)) || higher[0] || null;
+}
 function traineeTitle(p){
-  return `Blåbandare — under utbildning (${Math.min(exerciseCount(p),GRUNDUTB_KRAV)}/${GRUNDUTB_KRAV} avtalsövningar)`;
+  return isSpecialistTrainee(p)
+    ? 'Blåbandare — specialist under befattningsutbildning'
+    : `Blåbandare — under utbildning (${traineeProgressShort(p)})`;
 }
 /* Namn i fetstil — blå text för blåbandare. */
 function nameStrong(p, raw){
@@ -2683,33 +2884,46 @@ function nameStrong(p, raw){
 function gradeTest(def, p){
   if(isTrainee(p)) return def.level===1; // blåbandare kan endast ha graden Menig
   if(def.bef && !personBefIn(p, def.bef)) return false;
-  if(def.orGrundutb && p.grundutbKlar){ /* grundutbildning ersätter kompetenskravet */ }
-  else if(def.comps && !def.comps.every(c=>personHasComp(p,c))) return false;
-  if(def.compsAny && !def.compsAny.some(c=>personHasComp(p,c))) return false;
+  if(!(def.orGrundutb && p.grundutbKlar)){ /* klar blåbandare (äldre markering) ersätter kompetenskravet */
+    if(def.comps && !def.comps.every(c=>personHasComp(p,c))) return false;
+    if(def.compsAny && !def.compsAny.some(c=>personHasComp(p,c))) return false;
+  }
   if(def.minYears!=null && fulfilledContractYears(p)<def.minYears) return false;
-  if(def.minYearsInBef!=null && fulfilledContractYearsSince(p, p.plutcSedanAr)<def.minYearsInBef) return false;
+  if(def.minYearsInBef!=null && !(def.orHasGrade && gradeHeld(p, def.label))
+     && fulfilledContractYearsSince(p, p[def.sinceKey||'plutcSedanAr'])<def.minYearsInBef) return false;
   return true;
 }
 function currentGrade(p){
   let best = null;
-  GRADES.forEach(def=>{ if(gradeTest(def,p)) best = def; });
+  GRADES.forEach(def=>{ if(gradeTest(def,p) && (!best || def.level>=best.level)) best = def; });
   return best;
 }
 function missingForGrade(def, p){
   const missing = [];
   if(isTrainee(p)){
+    if(isSpecialistTrainee(p)){ missing.push('Specialist under befattningsutbildning'); return missing; }
     const n = exerciseCount(p);
     if(n<GRUNDUTB_KRAV) missing.push('Grundutbildning: '+n+'/'+GRUNDUTB_KRAV+' avtalsövningar');
     else missing.push('Grundutbildning klar — notera notisen på startsidan');
     return missing;
   }
   if(def.bef && !personBefIn(p, def.bef)) missing.push('Befattning: '+def.bef.join(' eller '));
-  if(def.orGrundutb && p.grundutbKlar){ /* kravet uppfyllt via grundutbildning */ }
-  else if(def.comps) def.comps.forEach(c=>{ if(!personHasComp(p,c)) missing.push('Kompetens: '+c); });
-  if(def.compsAny && !def.compsAny.some(c=>personHasComp(p,c))) missing.push('Kompetens: '+def.compsAny.join(' eller '));
+  if(!(def.orGrundutb && p.grundutbKlar)){
+    if(def.comps) def.comps.forEach(c=>{ if(!personHasComp(p,c)) missing.push('Kompetens: '+c); });
+    if(def.compsAny && !def.compsAny.some(c=>personHasComp(p,c))) missing.push('Kompetens: '+def.compsAny.join(' eller '));
+  }
   if(def.minYears!=null){
     const have = fulfilledContractYears(p);
     if(have<def.minYears) missing.push('Uppfyllda avtalsår: '+have+'/'+def.minYears);
+  }
+  if(def.minYearsInBef!=null && !(def.orHasGrade && gradeHeld(p, def.label))){
+    const key = def.sinceKey||'plutcSedanAr';
+    const have = fulfilledContractYearsSince(p, p[key]);
+    if(have<def.minYearsInBef){
+      missing.push((p[key]===''||p[key]==null)
+        ? 'Ange "'+(def.sinceLabel||'Stf PlutC/PlutC')+' sedan år" under Avtalsövningar'
+        : 'Uppfyllda avtalsår i befattningen: '+have+'/'+def.minYearsInBef);
+    }
   }
   return missing;
 }
@@ -2747,12 +2961,21 @@ function computeNotices(){
         });
       });
     });
-    if(isTrainee(p) && exerciseCount(p)>=GRUNDUTB_KRAV){
+    if(isTrainee(p) && !isSpecialistTrainee(p) && exerciseCount(p)>=GRUNDUTB_KRAV){
       notices.push({
         kind:'training', gid:p.groupId, pid:p.id, groupName:gName, personName:fullName(p),
-        text:`Har genomfört ${GRUNDUTB_KRAV} avtalsövningar (SÖF/KFÖ) och är nu klar med sin grundutbildning`,
+        text:`Har genomfört ${GRUNDUTB_KRAV} avtalsövningar (SÖF/KFÖ) och är nu klar med sin grundutbildning${p.blaTyp==='FMU' ? ' (FMU). När du noterar får personen kompetensen FMU' : ''}`,
         sortKey:-200000,
         ackCall:`ackTrainingNotice('${p.id}')`
+      });
+    }
+    /* saknad grundutbildning: kan inte kvitteras, försvinner när GU, FMU eller GUF fylls i.
+       Gäller inte blåbandare, Ny personal eller Avveckling. */
+    if(!isTrainee(p) && !personGrundutbId(p) && !['recruit','offboarding'].includes(groupKind(p.groupId))){
+      notices.push({
+        kind:'grundutb', gid:p.groupId, pid:p.id, groupName:gName, personName:fullName(p),
+        text:'Saknar grundutbildning. Fyll i GU, FMU eller GUF under Kompetenser — notisen försvinner då.',
+        sortKey:-95000, ackCall:'', showCall:`goPerson('${p.id}')`, notifyKey:'gu|'+p.id
       });
     }
     const cg = currentGrade(p);
@@ -2804,6 +3027,11 @@ function ackTrainingNotice(pid){
   if(!p) return;
   p.underUtbildning = false;
   p.grundutbKlar = true;
+  if(p.blaTyp==='FMU'){
+    if(!p.kompetenser.fmu) p.kompetenser.fmu = {has:false, utgangsdatum:''};
+    p.kompetenser.fmu.has = true;
+    normalizeGrundutb(p, 'fmu');
+  }
   saveToDisk(); renderAll();
 }
 function ackMoveNotice(nid){
@@ -2836,7 +3064,7 @@ function renderNoticeList(notices){
   return notices.map(n=>`<div class="noticeItem ${n.kind} lvl-${n.level||'orange'}">
     <div class="noticeGroup">${esc(n.groupName)}</div>
     <div class="noticeText">${n.personName ? `<strong>${esc(n.personName)}</strong> – ` : ''}${esc(n.text)}</div>
-    <button class="btn tiny" onclick="${n.ackCall}">${esc(n.ackLabel||'Noterat')}</button>${n.showCall ? ` <button class="btn tiny" onclick="${n.showCall}">Visa</button>` : ''}${n.undoCall ? ` <button class="btn tiny" onclick="${n.undoCall}">Ångra flytt</button>` : ''}
+    ${n.ackCall ? `<button class="btn tiny" onclick="${n.ackCall}">${esc(n.ackLabel||'Noterat')}</button>` : ''}${n.showCall ? ` <button class="btn tiny" onclick="${n.showCall}">Visa</button>` : ''}${n.undoCall ? ` <button class="btn tiny" onclick="${n.undoCall}">Ångra flytt</button>` : ''}
   </div>`).join('');
 }
 
@@ -2974,6 +3202,7 @@ function renderAll(){
   const vk = view.name+'|'+(view.gid||'')+'|'+(view.pid||'')+'|'+(view.tab||'');
   if(vk!==lastRenderedViewKey){ lastRenderedViewKey = vk; window.scrollTo(0,0); }
   if(DATA) YEARS = computeYears();
+  if(DATA){ try{ maybeSnapshotGrundutb(); }catch(e){} }
   if(DATA) refreshNoticeCache();
   renderTopbar();
   const app = document.getElementById('app');
@@ -3308,7 +3537,7 @@ function renderGroupStandard(gid){
     <div class="viewhead">
       <div>
         <h2 id="gname2-${g.id}" onclick="editGroupNameGroupView('${g.id}')">${esc(g.name)}</h2>
-        <div class="sub">${filled}/${g.slots.length} platser fyllda.${g.unit ? ' '+unitImportLabel(g)+'.' : ''} Befattning och befattningsnummer hör till platsen, inte personen — klicka på dem för att ändra. Pilarna byter plats inom gruppen.</div>
+        <div class="sub">${filled}/${g.slots.length} platser fyllda.${g.unit ? ' '+unitImportLabel(g)+'.' : ''} ${g.unit ? (g.unit==='tropp'?'Troppchefen':'Plutonchefen')+' ansvarar för enhetens rader. Ändrar du en rad eller en persons uppgifter här får du bekräfta det först. Raderna '+(g.unit==='tropp'?'Tropp C':'PlutC och Stf PlutC')+' styrs av kompaniet.' : 'Befattning och befattningsnummer hör till platsen, inte personen — klicka på dem för att ändra. Pilarna byter plats inom gruppen.'}</div>
       </div>
       <div class="headActions">
         <button class="btn small" onclick="toggleColumnPanel()">Ordna kolumner</button>
@@ -3388,6 +3617,7 @@ function setRecruitStep(pid, val){
   /* steget "Under utbildning" gör personen till blåbandare */
   if(val==='utbildning' && !p.grundutbKlar){ p.underUtbildning = true; p.grad = 'Menig'; }
   saveToDisk(); renderAll();
+  if(val==='utbildning' && p.underUtbildning && !p.blaTyp) askTraineeType(p.id);
 }
 function setRecruitDate(pid, stepKey, val){
   const p = DATA.persons.find(x=>x.id===pid);
@@ -3548,7 +3778,11 @@ function openPersonForm(gid, pid, slotIndex){
         <input type="checkbox" id="pf_underUtbildning" style="width:16px;height:16px;margin:0;accent-color:#1F5FBF;" ${p.underUtbildning?'checked':''} onchange="onTraineeToggle(this.checked)">
         <span style="font-weight:600;color:#1F5FBF;cursor:pointer;" onclick="const c=document.getElementById('pf_underUtbildning');c.checked=!c.checked;onTraineeToggle(c.checked);">Under utbildning (blåbandare)</span>
       </div>
-      <div style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Blåbandare kan endast ha graden Menig och visas med blå text i personallistan. Efter ${GRUNDUTB_KRAV} genomförda avtalsövningar (SÖF/KFÖ) visas en notis om att grundutbildningen är klar.${existing && p.underUtbildning ? ` Genomförda hittills: <strong>${Math.min(exerciseCount(p),GRUNDUTB_KRAV)}/${GRUNDUTB_KRAV}</strong>.` : ''}${p.grundutbKlar ? ' <strong>Grundutbildning klar.</strong>' : ''}</div>
+      <div id="pf_blaTypWrap" style="display:${p.underUtbildning?'flex':'none'};gap:16px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:13px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="pf_blaTyp" value="FMU" ${p.blaTyp==='FMU'?'checked':''} style="margin:0;accent-color:#1F5FBF;"> FMU</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="pf_blaTyp" value="Specialist" ${p.blaTyp==='Specialist'?'checked':''} style="margin:0;accent-color:#1F5FBF;"> Specialist</label>
+      </div>
+      <div style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Blåbandare kan endast ha graden Menig och visas med blå text i personallistan. <strong>FMU</strong>: efter ${GRUNDUTB_KRAV} genomförda avtalsövningar (SÖF/KFÖ) visas en notis, och när du noterar den får personen FMU. <strong>Specialist</strong>: utbildas till en befattning; ta bort krysset när befattningsutbildningen är klar.${existing && p.underUtbildning && p.blaTyp!=='Specialist' ? ` Genomförda hittills: <strong>${Math.min(exerciseCount(p),GRUNDUTB_KRAV)}/${GRUNDUTB_KRAV}</strong>.` : ''}${p.grundutbKlar ? ' <strong>Grundutbildning klar.</strong>' : ''}</div>
     </div>`;
 
   const overlay = document.createElement('div');
@@ -3571,12 +3805,20 @@ function closeModal(){
 }
 /* låser gradfältet till "Menig" medan rutan "Under utbildning" är ikryssad */
 function onTraineeToggle(checked){
+  const tw = document.getElementById('pf_blaTypWrap');
+  if(tw) tw.style.display = checked ? 'flex' : 'none';
   const gradEl = document.getElementById('pf_grad');
   if(!gradEl) return;
   if(checked){ gradEl.dataset.prev = gradEl.value; gradEl.value = 'Menig'; gradEl.disabled = true; }
   else { gradEl.disabled = false; if(gradEl.dataset.prev!==undefined) gradEl.value = gradEl.dataset.prev; }
 }
 function savePersonForm(existingId, gid, slotIndex){
+  const tEl = document.getElementById('pf_underUtbildning');
+  const typEl = document.querySelector('input[name="pf_blaTyp"]:checked');
+  if(tEl && tEl.checked && !typEl){
+    const prev = existingId ? DATA.persons.find(x=>x.id===existingId) : null;
+    if(!(prev && prev.underUtbildning)){ alert('Välj om blåbandaren är FMU eller Specialist.'); return; }
+  }
   let p = existingId ? DATA.persons.find(x=>x.id===existingId) : emptyPerson(gid);
   if(!existingId){
     if(slotIndex!==null && slotIndex!==undefined) p.slotIndex = slotIndex;
@@ -3590,6 +3832,8 @@ function savePersonForm(existingId, gid, slotIndex){
   if(trainEl){
     const wasTrainee = !!p.underUtbildning;
     p.underUtbildning = trainEl.checked;
+    const typSel = document.querySelector('input[name="pf_blaTyp"]:checked');
+    if(p.underUtbildning && typSel) p.blaTyp = typSel.value;
     if(p.underUtbildning){
       p.grad = 'Menig';
       if(!wasTrainee) p.grundutbKlar = false;
@@ -3974,7 +4218,7 @@ function renderPerson(pid, tab){
   else if(tab==='plan' && !isRecruit) body = renderPlan(p);
   else body = renderKompetenser(p);
   const traineeTag = isTrainee(p)
-    ? `<span class="traineeTag">Blåbandare · ${Math.min(exerciseCount(p),GRUNDUTB_KRAV)}/${GRUNDUTB_KRAV} avtalsövningar</span>`
+    ? `<span class="traineeTag">Blåbandare · ${traineeProgressShort(p)}</span>`
     : '';
 
   return `
@@ -4047,6 +4291,7 @@ function toggleCompetency(pid, key, checked){
   const p = DATA.persons.find(x=>x.id===pid);
   if(!p.kompetenser[key]) p.kompetenser[key]={has:false,utgangsdatum:''};
   p.kompetenser[key].has = checked;
+  if(checked && GRUNDUTB_IDS.includes(key)) normalizeGrundutb(p, key);
   saveToDisk(); renderAll();
 }
 function setCompetencyExpiry(pid, key, val){
@@ -4102,7 +4347,9 @@ function renderOvningar(p){
     return `<tr class="${yearOk?'yearOk':''}"><td class="year">${y}</td>${cells}</tr>`;
   }).join('');
   const done = exerciseCount(p);
-  const traineePanel = isTrainee(p)
+  const traineePanel = isSpecialistTrainee(p)
+    ? `<div class="panel" style="margin-bottom:14px;border-left:4px solid #1F5FBF;"><div style="font-weight:600;color:#1F5FBF;margin-bottom:6px;">Specialist under befattningsutbildning (blåbandare)</div><div style="font-size:13px;">Avtalsövningarna räknas inte mot någon grundutbildning. Ta bort krysset Under utbildning i Redigera uppgifter när befattningsutbildningen är klar.</div></div>`
+    : isTrainee(p)
     ? `<div class="panel" style="margin-bottom:14px;border-left:4px solid #1F5FBF;">
         <div style="font-weight:600;color:#1F5FBF;margin-bottom:6px;">Grundutbildning (blåbandare)</div>
         <div style="font-size:13px;">Genomförda avtalsövningar: <strong>${Math.min(done,GRUNDUTB_KRAV)}/${GRUNDUTB_KRAV}</strong> (varje SÖF och KFÖ med Närvarande räknas).</div>
@@ -4117,6 +4364,7 @@ function renderOvningar(p){
     <label style="font-weight:600;display:block;margin:14px 0 6px;">Stf PlutC/PlutC sedan år</label>
     <input type="number" step="1" style="width:100px;" placeholder="—" value="${p.plutcSedanAr||''}" onchange="setPlutcSedanAr('${p.id}', this.value)">
     <p style="margin-top:8px;color:var(--ink-soft);font-size:12px;">Det år personen tillträdde som Stf PlutC eller PlutC (vilket som var först). Används för att räkna ut om kravet på två uppfyllda avtalsår <em>i befattningen</em> Stf PlutC/PlutC är uppfyllt — till skillnad från övriga avtalsårskrav räknas inte totalt uppfyllda avtalsår i karriären, bara år från och med detta år. Krävs för graden Löjtnant.</p>
+    ${kompSinceInputsHtml(p)}
   </div>
   <div class="panel">
     <table class="exercise">
@@ -4252,7 +4500,7 @@ function renderGradOverview(){
   const rows = people.map(p=>{
     const cur = currentGrade(p);
     const curLevel = cur ? cur.level : 0;
-    const nextDef = GRADES.find(d=>d.level===curLevel+1);
+    const nextDef = nextGradeDef(p, curLevel);
     let nextCell, missingCell;
     if(nextDef){
       const missing = missingForGrade(nextDef, p);
@@ -4354,6 +4602,7 @@ function renderStats(){
       ${compSection}
       <p style="margin-top:12px;color:var(--ink-soft);font-size:12px;">Endast kompetenser markerade "Visa i statistik" räknas här — det gäller både grundkompetenserna och egna tillagda.</p>
     </div>
+    ${renderGrundutbStats()}
     ${renderContractFulfillment(inPluton)}
   `;
 }
@@ -4805,7 +5054,7 @@ async function openShareExport(scope, gid){
     plain = unitExportText(gid, scope==='unitnew' ? 'new' : 'all'); title = g ? g.name : '';
     if(!plain){ alert('Det finns ingen ny eller omfördelad personal tilldelad "'+title+'" att skicka.'); return; }
   } else {
-    plain = allGroupsSlackText() + uimPayload() + scopePayload(DATA.groups.map(g=>g.id)) + exportExtrasPayload(); title = 'hela registret' + exportExtrasTitle();
+    plain = allGroupsSlackText() + uimPayload() + gusPayload() + scopePayload(DATA.groups.map(g=>g.id)) + exportExtrasPayload(); title = 'hela registret' + exportExtrasTitle();
   }
   shareExportState = {plain, title, text:null, kind};
   const saved = await getRememberedShareCode();
@@ -5760,8 +6009,8 @@ async function calImportGo(){
 /* ---------- extradelar i en importerad text ---------- */
 function splitExtras(text){
   const out = {text:'', cal:null, notes:null, uim:null, scope:null, bad:false};
-  out.text = String(text||'').replace(/^[ \t]*#PR-(KAL1|ANS1|UIM1|SCOPE1)[ \t]+(.+)$/gm, (m, tag, json)=>{
-    try{ const o = JSON.parse(json); if(tag==='KAL1') out.cal = o; else if(tag==='UIM1') out.uim = o; else if(tag==='SCOPE1') out.scope = o; else out.notes = o; }catch(e){ out.bad = true; }
+  out.text = String(text||'').replace(/^[ \t]*#PR-(KAL1|ANS1|UIM1|SCOPE1|GUS1)[ \t]+(.+)$/gm, (m, tag, json)=>{
+    try{ const o = JSON.parse(json); if(tag==='KAL1') out.cal = o; else if(tag==='UIM1') out.uim = o; else if(tag==='SCOPE1') out.scope = o; else if(tag==='GUS1') out.gus = o; else out.notes = o; }catch(e){ out.bad = true; }
     return '';
   });
   return out;
@@ -5769,6 +6018,7 @@ function splitExtras(text){
 async function routeImport(text, personsFn){
   const ex = splitExtras(text);
   mergeUnitImport(ex.uim);
+  mergeGrundutbSnap(ex.gus);
   IMPORT_SCOPE = ex.scope || null; setTimeout(()=>{ IMPORT_SCOPE = null; }, 0);
   if(!ex.cal && !ex.notes){
     if(ex.bad) alert('En del av texten (kalender/anslagstavla) kunde inte läsas och hoppades över.');
@@ -6365,7 +6615,8 @@ function releaseSections(p){
   const ov = [];
   ov.push(['Avtalsår uppfyllda innan '+YEAR_START, String(p.avtalsarInnanStart||0)]);
   if(p.plutcSedanAr) ov.push(['Stf PlutC/PlutC sedan år', String(p.plutcSedanAr)]);
-  if(p.underUtbildning) ov.push(['Grundutbildning', 'Under utbildning (blåbandare)']);
+  SINCE_FIELDS.forEach(sf=>{ if(p[sf.key]) ov.push([sf.label+' sedan år', String(p[sf.key])]); });
+  if(p.underUtbildning) ov.push(['Grundutbildning', 'Under utbildning (blåbandare'+(p.blaTyp ? ', '+p.blaTyp : '')+')']);
   else if(p.grundutbKlar) ov.push(['Grundutbildning', 'Klar']);
   YEARS.forEach(y=>{
     const o = p.ovningar[y] || {};
@@ -6638,18 +6889,22 @@ function unitExportChoiceHtml(gid){
   const what = g.unit==='tropp' ? 'troppen' : 'plutonen';
   return `<div class="banner info" style="margin-bottom:12px;">
     <strong>Skicka till ${what}</strong><br>
-    Ny och omfördelad personal som du har tilldelat <em>${esc(g.name)}</em> (<strong>${n} st</strong>) skickas till ${what}s Ny personal, där chefen väljer rad. Personal som redan finns i ${what} rörs inte.
+    Ny och omfördelad personal som du har tilldelat <em>${esc(g.name)}</em> (<strong>${n} st</strong>) skickas till ${what}s Ny personal, där chefen väljer rad. Raderna ${g.unit==='tropp'?'Tropp C':'PlutC och Stf PlutC'} följer alltid med, eftersom kompaniet styr dem. Övrig personal i ${what} rörs inte.
     <div class="modal-actions" style="justify-content:flex-start;margin-top:8px;gap:8px;flex-wrap:wrap;">
-      <button class="btn primary" ${n?'':'disabled'} onclick="openShareExport('unitnew','${gid}')">🔒 Skicka ny personal (krypterad text)</button>
+      <button class="btn primary" onclick="openShareExport('unitnew','${gid}')">🔒 Skicka ny personal och chefsrader (krypterad text)</button>
       <button class="btn" onclick="if(confirm('Hela enhetens uppgifter skickas och skriver över ${what}s egna uppgifter om samma personer när de läses in. Fortsätta?')) openShareExport('unitall','${gid}')">Skicka hela enheten…</button>
     </div></div>`;
 }
-const UNIT_ONLY_LINES_RE = /^\s*(Enhet|Fördelad|Övrigt till enhet|Ursprung):/i;
+const UNIT_ONLY_LINES_RE = /^\s*(Enhet|Fördelad|Övrigt till enhet|Ursprung|KompC sedan år|Stf KompC sedan år|KVM sedan år):/i;
 function unitPersonBlock(p, app, sgid, row){
   const bef = personBefattningDisplay(p);
   const out = ['• *'+fullName(p)+'*'+(bef ? ' — '+bef : '')];
   out.push('   Plats: '+app+' '+sgid+(row ? ' rad '+row : ''));
-  const f = personSlackFieldsLine(p);
+  let f;
+  if(KOMP_ONLY_GRADES.includes(normLabel(p.grad))){
+    const sv = p.grad; p.grad = baseGradeLabel(p);
+    try{ f = personSlackFieldsLine(p); } finally { p.grad = sv; }
+  } else f = personSlackFieldsLine(p);
   if(f) out.push(f);
   const exId = new Set(excludedCompIds(app));
   const exLabels = new Set(DATA.competencies.filter(c=>exId.has(c.id)).map(c=>c.label));
@@ -6671,7 +6926,7 @@ function unitExportText(unitGid, mode){
   const lines = [];
   let count = 0;
   if(mode==='all'){
-    const rows = standardGroupRows(unitGid).filter(r=>r.person && !r.overflow);
+    const rows = standardGroupRows(unitGid).filter(r=>r.person && !r.overflow && !isChefSlot(U, r.idx));
     T.groups.forEach(sg=>{
       lines.push('*'+sg.name+'*', '');
       const mine = rows.filter(r=>U.slots[r.idx].sg===sg.sg);
@@ -6692,7 +6947,17 @@ function unitExportText(unitGid, mode){
     lines.push('*'+T.lists[sgid]+'*', '');
     list.forEach(p=>{ lines.push(...unitPersonBlock(p, T.app, sgid, sgid==='g6' ? (p.srcSg==='g6' ? p.srcRow : 0) : 0)); count++; });
   });
-  return count ? lines.join('\n').trim() : '';
+  /* chefsraderna ägs av kompaniet och följer alltid med — även tomma rader,
+     så att enheten tömmer dem. Sektionen ligger sist i texten. */
+  const chef = chefSlotIdx(U);
+  if(chef.length){
+    lines.push('*Kompaniets chefsrader: '+T.app+' g1 rad '+chef.map(i=>U.slots[i].r).join(', ')+'*', '');
+    chef.forEach(i=>{
+      const p = DATA.persons.find(x=>x.groupId===unitGid && x.slotIndex===i);
+      if(p){ lines.push(...unitPersonBlock(p, T.app, 'g1', U.slots[i].r)); count++; }
+    });
+  }
+  return count || chef.length ? lines.join('\n').trim() : '';
 }
 
 /* ---------- import från en pluton/tropp ---------- */
@@ -6744,7 +7009,7 @@ function unitImportStart(text, unitGid, apps){
   };
 }
 /* kompaniregistrets egna kompetenser följer inte med till plutoner/tropp; SSK finns i tropp men inte i plutoner */
-const KOMP_ONLY_IDS = ['kompc1','kompc2','komp_stri','kvm1','kvm2','stabc','stri_led_sensor'];
+const KOMP_ONLY_IDS = ['kompc1','kompc2','komp_stri','gu_stabstjanst','kvm1','kvm2','stabc','stri_led_sensor'];
 function excludedCompIds(app){ return app==='tropp' ? KOMP_ONLY_IDS : KOMP_ONLY_IDS.concat(['ssk']); }
 function normAnr(s){ return String(s||'').replace(/\s+/g,'').toLowerCase(); }
 function slackBlockAnr(block){
@@ -6790,7 +7055,11 @@ function unitImportPlan(text, unitGid){
   const owned = unitOwned(unitGid);
   const ownedIds = new Set(owned.map(p=>p.id));
   const used = new Set();
-  const plan = {U, T, entries:P.entries, skipped:P.skipped, anyPlats:P.anyPlats, conflict:[], added:[], noRow:[], updated:[], removed:[], emptied:[]};
+  const plan = {U, T, entries:P.entries, skipped:P.skipped, anyPlats:P.anyPlats, conflict:[], added:[], noRow:[], updated:[], removed:[], emptied:[], chefKept:[]};
+  const chefIdx = new Set(chefSlotIdx(U));
+  const chefHolder = new Map();
+  DATA.persons.filter(x=>x.groupId===unitGid && chefIdx.has(x.slotIndex)).forEach(x=>chefHolder.set(x.slotIndex, x));
+  const chefIds = new Set(Array.from(chefHolder.values()).map(x=>x.id));
   const isListG = x=> x.groupId==='k7'||x.groupId==='k8'||x.groupId==='k9';
   plan.renamed = [];
   P.entries.forEach(e=>{
@@ -6819,15 +7088,25 @@ function unitImportPlan(text, unitGid){
       let idx = e.row!=null ? U.slots.findIndex(s=>s.sg===e.sg && s.r===e.row+1) : -1;
       e.needSlot = (e.row!=null && idx<0);
       e.idx = idx;
+      /* chefsrad i texten: bara samma person som kompaniet redan har på raden uppdateras */
+      if(chefIdx.has(idx)){
+        const h = chefHolder.get(idx);
+        if(!h || !p || p.id!==h.id){ e.skip = true; plan.chefKept.push(e.name+' (rad '+U.slots[idx].befattning+')'); return; }
+      }
       if(e.row==null){ e.toReserve = true; plan.noRow.push(e.name); }
+    }
+    /* den som kompaniet har på en chefsrad flyttas inte av enheten */
+    if(p && chefIds.has(p.id) && !(chefIdx.has(e.idx) && chefHolder.get(e.idx)===p)){
+      e.skip = true; plan.chefKept.push(e.name+' (står kvar på '+U.slots[p.slotIndex].befattning+')'); return;
     }
     if(!p) plan.added.push(e.name); else plan.updated.push(e.name);
   });
+  chefIds.forEach(id=>used.add(id));
   plan.removed = owned.filter(p=>!used.has(p.id)).map(p=>p.id);
   plan.removedNames = owned.filter(p=>!used.has(p.id)).map(p=>fullName(p)+(p.groupId===unitGid ? '' : ' ('+getGroup(p.groupId).name+')'));
   const before = new Set(DATA.persons.filter(p=>p.groupId===unitGid && p.slotIndex!=null).map(p=>p.slotIndex));
   const after = new Set(P.entries.filter(e=>!e.skip && !(e.sg in COMPANY_LIST_OF) && e.idx>=0).map(e=>e.idx));
-  plan.emptied = Array.from(before).filter(i=>!after.has(i)).sort((a,b)=>a-b);
+  plan.emptied = Array.from(before).filter(i=>!after.has(i) && !chefIdx.has(i)).sort((a,b)=>a-b);
   return plan;
 }
 function unitImportApply(text, unitGid){
@@ -6850,6 +7129,7 @@ function unitImportApply(text, unitGid){
   if(plan.renamed.length) S.push('• Namn ändras (samma anställningsnummer): '+lst(plan.renamed,12)+'.');
   if(plan.noRow.length) S.push('• Utan radangivelse, läggs i Personalreserv: '+lst(plan.noRow,12)+'.');
   if(plan.conflict.length) S.push('• Hoppas över, finns på annat ställe i kompaniet: '+lst(plan.conflict,12)+'.');
+  S.push('• Raderna '+(U.unit==='tropp'?'Tropp C':'PlutC och Stf PlutC')+' styrs av kompaniet och ändras inte av inläsningen.'+(plan.chefKept.length ? ' Hoppas över: '+lst(plan.chefKept,12)+'.' : ''));
   if(plan.skipped.length) S.push('• Hoppas över (okänd grupp): '+lst(plan.skipped,12)+'.');
   const overlay = document.createElement('div');
   overlay.className = 'overlay'; overlay.style.zIndex = 265;
@@ -6880,7 +7160,8 @@ function unitImportRun(text, unitGid){
   const gone = new Set(plan.removed);
   DATA.persons = DATA.persons.filter(p=>!gone.has(p.id));
   /* alla som står på enhetens rader lyfts av och placeras om exakt enligt texten */
-  DATA.persons.forEach(p=>{ if(p.groupId===unitGid) p.slotIndex = null; });
+  const keepChef = new Set(chefSlotIdx(U));
+  DATA.persons.forEach(p=>{ if(p.groupId===unitGid && !keepChef.has(p.slotIndex)) p.slotIndex = null; });
   const R = {added:[], updated:[], toList:[], noRow:[]};
   plan.entries.filter(e=>!e.skip).forEach(e=>{
     const isList = e.sg in COMPANY_LIST_OF;
@@ -6918,6 +7199,7 @@ function unitImportRun(text, unitGid){
   if(plan.renamed.length) L.push('\nNamn ändrade (samma anställningsnummer):\n  '+plan.renamed.join('\n  '));
   if(R.noRow.length) L.push('\nUtan radangivelse, lagda i Personalreserv:\n  '+R.noRow.join('\n  '));
   if(plan.conflict.length) L.push('\nHoppades över — finns på annat ställe i kompaniet:\n  '+plan.conflict.join('\n  '));
+  if(plan.chefKept.length) L.push('\nChefsraderna styrs av kompaniet — hoppades över:\n  '+plan.chefKept.join('\n  '));
   if(plan.skipped.length) L.push('\nHoppades över (okänd grupp): '+plan.skipped.join(', '));
   importDone(L.join('\n'));
 }
@@ -7048,7 +7330,8 @@ function mirrorReset(p, g){
     if(!p.utvecklingsplan) p.utvecklingsplan = {};
     p.utvecklingsplan[y] = '';
   });
-  p.avtalsarInnanStart = 0; p.plutcSedanAr = ''; p.underUtbildning = false; p.grundutbKlar = false;
+  p.avtalsarInnanStart = 0; p.plutcSedanAr = ''; p.underUtbildning = false; p.grundutbKlar = false; p.blaTyp = '';
+  SINCE_FIELDS.forEach(sf=>{ p[sf.key] = ''; });
   p.enhet = null; p.fordelad = false; p.utText = ''; p.srcSg = ''; p.srcRow = 0;
 }
 function mirrorRun(text, singleGid, scopeInfo){
@@ -7209,6 +7492,22 @@ function ensureKok7(data){
 }
 
 const APP_CHANGELOG = [
+  {version:'2026-10-27', title:'Behörighet i enheternas block', items:[
+    'Plutonchefen och troppchefen ansvarar för raderna i sina enheter. Byter kompaniet rad, tilldelar en rad, ändrar befattning eller redigerar en persons uppgifter i en plutons eller STAB/Tross block kommer först en varning. Du väljer att fortsätta eller avstå.',
+    'Raderna PlutC, Stf PlutC och Tropp C styrs av kompaniet. Där kommer ingen varning, och raderna följer alltid med när kompaniet skickar till enheten. När kompaniet läser in en export från enheten ändras de raderna inte.',
+    'Ledningsgrupp, Personalreserv, Ny personal och Avveckling hanterar kompaniet fritt som tidigare.',
+    'Graderna för Ledningsgruppen, GU Stabstjänst och FMU från 13 oktober finns med igen efter ett fel vid förra uppladdningen.'
+  ]},
+  {version:'2026-10-13', title:'Grundutbildning och grader', items:[
+    'Ny kompetens FMU mellan GU och GUF. FMU är en grundutbildning och räknas som GU i alla gradkrav.',
+    'En person kan bara ha en grundutbildning (GU, FMU eller GUF). Markerar du en ny tas den tidigare bort. Har någon flera sedan tidigare behålls FMU före GU före GUF.',
+    'Blåbandare väljs som FMU eller Specialist. FMU: efter 4 avtalsövningar kommer notisen, och när du noterar den får personen FMU och blåmarkeringen tas bort. Specialist: avtalsövningarna räknas inte, och du tar bort blåmarkeringen själv när befattningsutbildningen är klar. Befintliga blåbandare väljer du typ för i Redigera uppgifter.',
+    'Statistiken visar andelen med GU, FMU och GUF, blåbandare under utbildning och de som saknar grundutbildning, som liggande staplar. Den 31 december kl 12:00 fryses årets fördelning och visas bredvid den aktuella (tas när appen öppnas första gången efter den tidpunkten). Årsbilderna följer med när du skickar hela registret till en kollega.',
+    'Notisen om saknad grundutbildning gäller Ledningsgruppen, Tropp C, PlutC, Stf PlutC och Personalreserv (och bevakade personer).',
+    'Grader i Ledningsgruppen: KompC Löjtnant (KompC 1 och 2) och Kapten efter 3 år; Stf KompC Fänrik (KompC 1) och Löjtnant efter 3 år eller om personen redan är Löjtnant; Komp Fanj Fanjunkare (Komp Stri, IK1, IK2); KVM Sergeant (GU Stabstjänst, KVM 1) och Fanjunkare (även KVM 2) efter 3 år eller om personen redan är Fanjunkare; UNDH Bef, STRI Bef och SENSOR Bef Sergeant (GU Stabstjänst).',
+    'Nya grader Kapten och Fanjunkare (samma nivå som Fänrik) finns bara i Kompaniregistret. Skickas personen till en pluton eller tropp följer den grad med som personen uppfyller där.',
+    'Ny kompetens GU Stabstjänst före KVM 1. Under Avtalsövningar finns fälten "KompC sedan år", "Stf KompC sedan år" och "KVM sedan år" för tidskraven.'
+  ]},
   {version:'2026-10-12.3', title:'Färre notiser', items:[
     'Kompaniet får bara personnotiser för Ledningsgruppen, Tropp C, PlutC och Stf PlutC samt för Personalreserv, Ny personal och Avveckling. Notiser för GrpC, Stf GrpC och soldater hanteras av pluton och tropp. Statistiken påverkas inte.',
     'Ny knapp Bevaka i personkortet: markerade personer ger notiser även när raden hör till pluton eller tropp.'
@@ -7249,7 +7548,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v8';
+const SW_CACHE_VERSION = 'kompaniregister-v10';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 function maybeShowWhatsNew(){
@@ -7321,6 +7620,76 @@ if('serviceWorker' in navigator && /^https?:/.test(location.protocol)){
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().catch(()=>{});
 }
+
+/* =====================================================================
+   BEHÖRIGHET I ENHETERNAS BLOCK (27 oktober 2026)
+   Plutonchefen/troppchefen äger enhetens rader. Kompaniet får ändra,
+   men först efter en varning. Raderna PlutC, Stf PlutC och Tropp C ägs
+   av kompaniet: där kommer ingen varning, och de följer med vid export.
+   Ledningsgrupp, Personalreserv, Ny personal och Avveckling: full behörighet.
+   ===================================================================== */
+const KOMP_CHEF_ROWS = {pluton:[1,2], tropp:[1]};
+function isChefSlot(U, idx){
+  if(!U || !U.unit || idx==null || idx<0) return false;
+  const sl = U.slots[idx];
+  return !!(sl && sl.sg==='g1' && (KOMP_CHEF_ROWS[U.unit]||[]).includes(sl.r));
+}
+function chefSlotIdx(U){
+  if(!U || !U.unit) return [];
+  return U.slots.map((sl,i)=>isChefSlot(U,i) ? i : -1).filter(i=>i>=0);
+}
+function unitGuard(U, run){
+  const chef = U.unit==='tropp' ? 'Troppchefen' : 'Plutonchefen';
+  const what = U.unit==='tropp' ? 'troppen' : 'plutonen';
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay'; overlay.style.zIndex = 270;
+  overlay.innerHTML = `<div class="modal" style="max-width:500px;">
+    <h3>${chef} ansvarar för den här raden</h3>
+    <p style="color:var(--ink-soft);font-size:14px;margin-bottom:10px;">${chef} har mandatet att administrera ${esc(U.name)} och ansvarar för enhetens rader och personalens uppgifter.</p>
+    <p style="color:var(--ink-soft);font-size:14px;margin-bottom:14px;">Ändringen gäller bara i kompaniregistret. Den skrivs över vid nästa import från ${what}, om inte ${chef.toLowerCase()} gör samma ändring.</p>
+    <div class="modal-actions"><button class="btn primary" id="ugNo">Avstå</button><button class="btn" id="ugYes">Fortsätt med ändringen</button></div>
+  </div>`;
+  overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+  overlay.querySelector('#ugNo').onclick = ()=>overlay.remove();
+  overlay.querySelector('#ugYes').onclick = ()=>{ overlay.remove(); run(); };
+}
+(function(){
+  const rawMove = movePerson, rawToGroup = movePersonToGroup, rawAssign = assignPersonToSlot,
+        rawSlot = editSlotField, rawForm = openPersonForm;
+  movePerson = function(pid, dir){
+    const p = DATA.persons.find(x=>x.id===pid), U = p && getGroup(p.groupId);
+    if(U && U.unit && p.slotIndex!=null && !(isChefSlot(U,p.slotIndex) && isChefSlot(U,p.slotIndex+dir)))
+      return unitGuard(U, ()=>rawMove(pid, dir));
+    return rawMove(pid, dir);
+  };
+  movePersonToGroup = function(pid, newGid){
+    const p = DATA.persons.find(x=>x.id===pid), U = p && getGroup(p.groupId);
+    if(U && U.unit && newGid && newGid!==p.groupId && !isChefSlot(U,p.slotIndex))
+      return unitGuard(U, ()=>rawToGroup(pid, newGid));
+    return rawToGroup(pid, newGid);
+  };
+  assignPersonToSlot = function(pid, gid, idxStr){
+    const U = getGroup(gid), idx = parseInt(idxStr,10);
+    if(U && U.unit && !isChefSlot(U,idx)) return unitGuard(U, ()=>rawAssign(pid, gid, idxStr));
+    return rawAssign(pid, gid, idxStr);
+  };
+  editSlotField = function(gid, idx, field){
+    const U = getGroup(gid);
+    if(U && U.unit && !isChefSlot(U,idx)) return unitGuard(U, ()=>rawSlot(gid, idx, field));
+    return rawSlot(gid, idx, field);
+  };
+  openPersonForm = function(gid, pid, slotIndex){
+    if(pid){
+      const p = DATA.persons.find(x=>x.id===pid), U = p && getGroup(p.groupId);
+      if(U && U.unit && !isChefSlot(U,p.slotIndex)) return unitGuard(U, ()=>rawForm(gid, pid, slotIndex));
+    } else {
+      const U = getGroup(gid);
+      if(U && U.unit && slotIndex!=null && !isChefSlot(U,slotIndex)) return unitGuard(U, ()=>rawForm(gid, pid, slotIndex));
+    }
+    return rawForm(gid, pid, slotIndex);
+  };
+})();
 </script>
 </body>
 </html>
