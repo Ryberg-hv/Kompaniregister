@@ -2996,6 +2996,7 @@ function renderTopbar(){
     html += `<button class="btn small" onclick="goHome()">Startsida</button>`;
     html += `<button class="btn small" onclick="renameRegister()" title="Ge registret ett eget namn">Namnge registret</button>`;
     html += `<button class="btn small" onclick="openBehModal()" title="Utfärda och spärra nycklar">Behörigheter</button>`;
+    html += `<button class="btn small" onclick="openCodeGen()" title="Skapa en slumpkod på tio tecken">Skapa kod</button>`;
     html += `<button class="btn small danger" onclick="deleteCurrentRegister()" title="Radera registret från den här enheten">Radera registret</button>`;
     html += `<button class="btn small" onclick="goOverview()">Övningsöversikt</button>`;
     html += `<button class="btn small" onclick="goGradOverview()">Grader</button>`;
@@ -3045,7 +3046,7 @@ function goGradOverview(){ view={name:'gradoverview'}; renderAll(); }
 
 let lastRenderedViewKey = '';
 function renderAll(){
-  try{ behAdoptPending(); }catch(e){}
+  try{ behAdoptPending(); behAutoSync(); }catch(e){}
   toggleMenu(false);
   const vk = view.name+'|'+(view.gid||'')+'|'+(view.pid||'')+'|'+(view.tab||'');
   if(vk!==lastRenderedViewKey){ lastRenderedViewKey = vk; window.scrollTo(0,0); }
@@ -4615,6 +4616,7 @@ function pinPress(d){
 }
 document.addEventListener('keydown', e=>{
   if(!lockMode) return;
+  { const t=e.target; if(t && (t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)) return; }
   if(/^[0-9]$/.test(e.key)){ e.preventDefault(); pinPress(e.key); }
   else if(e.key==='Backspace'){ e.preventDefault(); pinBack(); }
 });
@@ -5083,7 +5085,7 @@ function computeAllNotices(){
         sortKey:-250000, ackCall:'openGallringModal(true)', ackLabel:'Gallra…'});
     }
   }catch(e){}
-  const all = base.concat(extra, kompaniNotices(), unitImportNotices(), calendarNotices(), boardNotices(), structNotices(), authNotices());
+  const all = base.concat(extra, kompaniNotices(), unitImportNotices(), calendarNotices(), boardNotices(), structNotices(), authNotices(), behTokenNotices());
   const rank = n=>(n.level==='red'?0:1);
   all.sort((a,b)=> rank(a)-rank(b) || (a.sortKey||0)-(b.sortKey||0));
   return all;
@@ -7499,8 +7501,12 @@ function renderSetup(){
 
 
 /* ---------- BEHORIGHET_V4: nyckel som kontrolleras mot listan i repot Behorighet ---------- */
-const AUTH_URL = 'https://raw.githubusercontent.com/Ryberg-hv/Behorighet/main/nycklar.json';
-const AUTH_API = 'https://api.github.com/repos/Ryberg-hv/Behorighet/contents/nycklar.json';
+/* KOMPANIKOD_V5: ett repo per kompani, Behorighet<kod>. Nyckel utan kod hör till 452. */
+const AUTH_DEFAULT_CO = '452';
+function authCo(){ const r = authRec(); return (r && r.co) || AUTH_DEFAULT_CO; }
+function authUrl(co){ return 'https://raw.githubusercontent.com/Ryberg-hv/Behorighet'+(co||authCo())+'/main/nycklar.json'; }
+function authApi(co){ return 'https://api.github.com/repos/Ryberg-hv/Behorighet'+(co||authCo())+'/contents/nycklar.json'; }
+function authSplit(v){ const n = authNorm(v); if(n.length>=23) return {co:n.slice(0,3), key:n.slice(3)}; return {co:AUTH_DEFAULT_CO, key:n}; }
 const AUTH_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const AUTH_GRACE_DAYS = 14, AUTH_WARN_DAYS = 11, AUTH_MAX_REVOKE = 5;
 const AUTH_NAME = {grupp:'gruppregister', pluton:'personalregister', tropp:'troppregister', kompani:'kompaniregister'}[APP_KEY];
@@ -7524,10 +7530,10 @@ function authRec(){ try{ return JSON.parse(localStorage.getItem(AUTH_NAME+'_auth
 function authSave(r){ try{ localStorage.setItem(AUTH_NAME+'_auth', JSON.stringify(r)); }catch(e){} }
 function authIdSuffix(){ const r = authRec(); return (r && r.id) ? ' · nyckel '+r.id : ''; }
 function authMeta(){ const r = authRec(); return (r && r.id) ? [['Nyckel-id', r.id]] : []; }
-async function authFetchList(){
+async function authFetchList(co){
   const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 8000);
   try{
-    const r = await fetch(AUTH_URL+'?t='+Date.now(), {cache:'no-store', signal:ctl.signal});
+    const r = await fetch(authUrl(co)+'?t='+Date.now(), {cache:'no-store', signal:ctl.signal});
     if(!r.ok) return null;
     const j = await r.json();
     if(!j || j.v!==1 || !Array.isArray(j.keys)) return null;
@@ -7588,27 +7594,29 @@ async function authRetry(){
   else if(m) m.textContent = 'Kunde inte kontrollera just nu. Kontrollera uppkopplingen.';
 }
 function authShowActivate(){
-  authGate('<h2 style="margin:0 0 6px;">Ange din nyckel</h2><p style="font-size:13px;color:#454B4F;margin:0 0 12px;">Appen kräver en behörighetsnyckel från kompaniet. Aktiveringen kräver uppkoppling. Nyckeln behöver bara anges en gång.</p>'
-    +'<input id="authKeyIn" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" style="width:100%;box-sizing:border-box;padding:10px;font-size:16px;letter-spacing:1px;border:1px solid #888;border-radius:8px;">'
+  authGate('<h2 style="margin:0 0 6px;">Ange din nyckel</h2><p style="font-size:13px;color:#454B4F;margin:0 0 12px;">Appen kräver en behörighetsnyckel från kompaniet. Nyckeln börjar med kompanikoden (tre tecken). Aktiveringen kräver uppkoppling och nyckeln behöver bara anges en gång.</p>'
+    +'<input id="authKeyIn" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="452-XXXXX-XXXXX-XXXXX-XXXXX" style="width:100%;box-sizing:border-box;padding:10px;font-size:16px;letter-spacing:1px;border:1px solid #888;border-radius:8px;">'
     +'<div id="authMsg" style="min-height:18px;font-size:13px;color:#8C3B32;margin:8px 0;"></div>'
+    +'<button class="btn" style="margin-top:8px;" onclick="authPaste()">Klistra in från urklipp</button>'
     +'<button class="btn primary" id="authGoBtn" onclick="authActivate()">Aktivera</button>'
-    +(APP_KEY==='kompani' ? '<div id="authBoot"></div>' : ''), 'activate');
+    +(APP_KEY==='kompani' ? '<div id="authBoot"></div>' : '')+'<p style="font-size:11px;color:#777;margin:14px 0 0;">Version '+(typeof SW_CACHE_VERSION!=='undefined'?SW_CACHE_VERSION:'?')+'</p>', 'activate');
   if(typeof authBootOwnerUi==='function') authBootOwnerUi();
   setTimeout(()=>{ const i = document.getElementById('authKeyIn'); if(i) i.focus(); }, 50);
 }
+async function authPaste(){ try{ const t=await navigator.clipboard.readText(); document.getElementById('authKeyIn').value=t; }catch(e){ const m=document.getElementById('authMsg'); if(m) m.textContent='Kunde inte läsa urklipp. Håll i fältet och välj Klistra in.'; } }
 async function authActivate(){
   const inp = document.getElementById('authKeyIn'), m = document.getElementById('authMsg'), btn = document.getElementById('authGoBtn');
-  const key = authNorm(inp.value);
+  const parts = authSplit(inp.value), key = parts.key;
   if(key.length<16){ m.textContent = 'Nyckeln ser inte komplett ut.'; return; }
   btn.disabled = true; m.textContent = 'Kontrollerar…';
   try{
     const h = await authHash(key);
-    const list = await authFetchList();
-    if(!list){ m.textContent = 'Ingen uppkoppling. Aktivering kräver internet.'; return; }
+    const list = await authFetchList(parts.co);
+    if(!list){ m.textContent = 'Ingen uppkoppling, eller kompanikoden stämmer inte. Aktivering kräver internet.'; return; }
     const mine = list.keys.find(k=>k.h===h);
     if(!mine){ m.textContent = 'Nyckeln finns inte på listan.'; return; }
     if(!AUTH_NEED.includes(mine.lvl)){ m.textContent = 'Nyckeln gäller inte för den här appen (nivå '+(AUTH_LVL_LABEL[mine.lvl]||mine.lvl)+').'; return; }
-    authSave({h, id:mine.id, lvl:mine.lvl, lastOk:Date.now(), seen:list.keys.map(k=>k.id).slice(0,500)});
+    authSave({h, id:mine.id, lvl:mine.lvl, co:parts.co, lastOk:Date.now(), seen:list.keys.map(k=>k.id).slice(0,500)});
     authGateClose();
     try{ renderAll(); }catch(e){}
   } finally { btn.disabled = false; }
@@ -7641,11 +7649,65 @@ function authBoot(){
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) authRunCheck(); });
 }
 
-/* ---------- BEHORIGHET_V4: nyckelhantering i Kompaniregistret ---------- */
+/* ---------- BEHORIGHET_V5: nyckelhantering i Kompaniregistret ---------- */
 let AUTH_PENDING_TOKEN = '';
+const BEH_PLACEHOLDER = ['(okänd)','(krypterat)'];
 function ensureBeh(){ if(!DATA.beh || typeof DATA.beh!=='object') DATA.beh = {users:[], dirty:false}; if(!Array.isArray(DATA.beh.users)) DATA.beh.users = []; return DATA.beh; }
-async function behGetToken(){ try{ const raw = localStorage.getItem('kompaniregister_ghtoken'); if(!raw) return ''; return await decryptFromStorage(raw); }catch(e){ return ''; } }
-async function behSetToken(t){ try{ if(!t){ localStorage.removeItem('kompaniregister_ghtoken'); return; } localStorage.setItem('kompaniregister_ghtoken', await encryptForStorage(t)); }catch(e){} }
+function behYmd(off){ const d = new Date(); d.setDate(d.getDate()+(off||0)); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function behTokenInfo(){
+  let exp = ''; try{ exp = localStorage.getItem('kompaniregister_ghtoken_exp')||''; }catch(e){}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(exp)) return null;
+  const days = Math.ceil((new Date(exp+'T23:59:59') - Date.now())/86400000);
+  return {exp, days, expired: behYmd(0) > exp};
+}
+async function behGetToken(){
+  try{
+    const info = behTokenInfo(); if(info && info.expired) return '';
+    const raw = localStorage.getItem('kompaniregister_ghtoken'); if(!raw) return '';
+    return await decryptFromStorage(raw);
+  }catch(e){ return ''; }
+}
+async function behSetToken(t, exp){
+  try{
+    if(!t){ localStorage.removeItem('kompaniregister_ghtoken'); localStorage.removeItem('kompaniregister_ghtoken_exp'); return; }
+    localStorage.setItem('kompaniregister_ghtoken', await encryptForStorage(t));
+    if(exp) localStorage.setItem('kompaniregister_ghtoken_exp', exp);
+    localStorage.removeItem('kompaniregister_tokwarn');
+  }catch(e){}
+}
+/* ----- signalkod (tio tecken, gemensam för kompaniet) och kryptering av anropssignaler ----- */
+const CODE_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+function genCode10(){
+  const out = [];
+  while(out.length<10){
+    const buf = new Uint8Array(32); crypto.getRandomValues(buf);
+    for(const v of buf){ if(v<224){ out.push(CODE_ALPHA[v%56]); if(out.length===10) break; } }
+  }
+  return out.join('');
+}
+let SIG_CACHE = null;
+async function behGetSigCode(){ try{ const raw = localStorage.getItem('kompaniregister_sigkod'); if(!raw) return ''; return await decryptFromStorage(raw); }catch(e){ return ''; } }
+async function sigDerive(code, co){
+  if(SIG_CACHE && SIG_CACHE.code===code && SIG_CACHE.co===co) return SIG_CACHE.key;
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey('raw', enc.encode(code), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({name:'PBKDF2', salt:enc.encode('PR-SIG|'+co), iterations:150000, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+  SIG_CACHE = {code, co, key}; return key;
+}
+async function behSigKey(){ const c = await behGetSigCode(); return c ? sigDerive(c, authCo()) : null; }
+async function sigEnc(key, text){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, new TextEncoder().encode(text)));
+  const all = new Uint8Array(12+ct.length); all.set(iv); all.set(ct, 12);
+  let bin = ''; all.forEach(b=>{ bin += String.fromCharCode(b); }); return btoa(bin);
+}
+async function sigDec(key, s){
+  try{
+    const raw = Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:raw.slice(0,12)}, key, raw.slice(12));
+    return new TextDecoder().decode(pt);
+  }catch(e){ return null; }
+}
 function behAdoptPending(){
   if(!DATA) return;
   let raw = null; try{ raw = localStorage.getItem('kompaniregister_beh_pending'); }catch(e){}
@@ -7656,10 +7718,10 @@ function behAdoptPending(){
     localStorage.removeItem('kompaniregister_beh_pending');
     saveToDisk();
   }catch(e){}
-  if(AUTH_PENDING_TOKEN && vaultKey){ behSetToken(AUTH_PENDING_TOKEN); AUTH_PENDING_TOKEN = ''; }
+  if(AUTH_PENDING_TOKEN && vaultKey){ behSetToken(AUTH_PENDING_TOKEN, (()=>{ try{ return localStorage.getItem('kompaniregister_ghtoken_exp_pending')||''; }catch(e){ return ''; } })()); AUTH_PENDING_TOKEN = ''; try{ localStorage.removeItem('kompaniregister_ghtoken_exp_pending'); }catch(e){} }
 }
 function behPayload(){
-  try{ if(!DATA || !DATA.beh || !DATA.beh.users.length) return ''; return '\n\n#PR-BEH1 '+JSON.stringify({v:1, u:DATA.beh.users}); }catch(e){ return ''; }
+  try{ if(!DATA || !DATA.beh || !DATA.beh.users.length) return ''; return '\n\n#PR-BEH1 '+JSON.stringify({v:1, u:DATA.beh.users.map(u=>({id:u.id, namn:u.namn, lvl:u.lvl, h:u.h, created:u.created, revoked:!!u.revoked}))}); }catch(e){ return ''; }
 }
 function behMerge(o){
   try{
@@ -7674,8 +7736,8 @@ function behMerge(o){
   }catch(e){}
 }
 function behGhHeaders(tok){ return {'Authorization':'Bearer '+tok, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'}; }
-async function behFetchRemote(tok){
-  const r = await fetch(AUTH_API+'?t='+Date.now(), {headers:behGhHeaders(tok), cache:'no-store'});
+async function behFetchRemote(tok, co){
+  const r = await fetch(authApi(co)+'?t='+Date.now(), {headers:behGhHeaders(tok), cache:'no-store'});
   if(r.status===404) return {sha:null, list:{v:1, updated:0, keys:[]}};
   if(!r.ok) throw new Error('GitHub svarade '+r.status+(r.status===401||r.status===403?' (token saknar behörighet eller har gått ut)':''));
   const j = await r.json();
@@ -7684,17 +7746,48 @@ async function behFetchRemote(tok){
   if(!list || !Array.isArray(list.keys)) list = {v:1, updated:0, keys:[]};
   return {sha:j.sha, list};
 }
-async function behPut(tok, sha, list){
+async function behPut(tok, sha, list, co){
   const body = {message:'Uppdaterar nyckelkort', content:btoa(unescape(encodeURIComponent(JSON.stringify(list, null, 2)+'\n'))), branch:'main'};
   if(sha) body.sha = sha;
-  const r = await fetch(AUTH_API, {method:'PUT', headers:Object.assign({'Content-Type':'application/json'}, behGhHeaders(tok)), body:JSON.stringify(body)});
-  if(!r.ok) throw new Error('GitHub svarade '+r.status);
+  const r = await fetch(authApi(co), {method:'PUT', headers:Object.assign({'Content-Type':'application/json'}, behGhHeaders(tok)), body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('GitHub svarade '+r.status+(r.status===404?' (repot Behorighet'+(co||authCo())+' finns inte eller token saknar åtkomst)':''));
 }
-function behBuildList(remote){
+/* GitHub-filen är facit: lokala listan jämförs mot den. auto = tyst synk (skyddar mot masstapp) */
+async function behReconcile(remoteList, key, auto){
+  const b = ensureBeh();
+  const rk = new Map(); remoteList.keys.forEach(k=>{ if(k && k.id) rk.set(k.id, k); });
+  const goneList = b.users.filter(u=>!rk.has(u.id) && !u.revoked && !u.fresh);
+  if(auto && goneList.length>AUTH_MAX_REVOKE) return null;
+  let added = 0;
+  for(const [id,k] of rk){
+    let u = b.users.find(x=>x.id===id);
+    let nm = null; if(k.s && key) nm = await sigDec(key, k.s);
+    if(!u){
+      u = {id, namn: nm!=null ? nm : (k.s ? '(krypterat)' : '(okänd)'), lvl:k.lvl, h:k.h, created:Date.now(), revoked:false};
+      if(k.s && nm==null) u.sraw = k.s;
+      b.users.push(u); added++; continue;
+    }
+    if(u.revoked && !u.pendingRevoke){ u.revoked = false; added++; }
+    if(k.s){
+      if(nm!=null){ if(!u.fresh && !u.edited) u.namn = nm; delete u.sraw; }
+      else { u.sraw = k.s; if(u.namn==='(okänd)') u.namn = '(krypterat)'; }
+    }
+  }
+  goneList.forEach(u=>{ u.revoked = true; delete u.pendingRevoke; });
+  b.dirty = b.users.some(u=>u.fresh || u.pendingRevoke || u.edited) || !!b.recode;
+  return {rk, added, gone:goneList.length};
+}
+async function behBuildList(remote, key){
   const b = ensureBeh();
   const knownIds = new Set(b.users.map(u=>u.id));
   remote.keys.forEach(k=>{ if(k && k.id && !knownIds.has(k.id)) b.users.push({id:k.id, namn:'(okänd)', lvl:k.lvl, h:k.h, created:Date.now(), revoked:false}); });
-  const keys = b.users.filter(u=>!u.revoked).map(u=>({id:u.id, h:u.h, lvl:u.lvl}));
+  const keys = [];
+  for(const u of b.users.filter(u=>!u.revoked)){
+    const o = {id:u.id, h:u.h, lvl:u.lvl};
+    if(key && u.namn && !BEH_PLACEHOLDER.includes(u.namn)) o.s = await sigEnc(key, u.namn);
+    else if(u.sraw) o.s = u.sraw;
+    keys.push(o);
+  }
   const keep = new Set(keys.map(k=>k.id));
   const removed = remote.keys.filter(k=>k && !keep.has(k.id)).length;
   return {list:{v:1, updated:Date.now(), keys}, removed};
@@ -7702,37 +7795,125 @@ function behBuildList(remote){
 async function behUpload(){
   const msg = document.getElementById('behMsg'); const say = t=>{ if(msg) msg.textContent = t; };
   const tok = (await behGetToken()) || AUTH_PENDING_TOKEN;
-  if(!tok){ say('Lägg in din token först.'); return; }
+  if(!tok){ const i = behTokenInfo(); say(i && i.expired ? 'Din token har gått ut. Tryck Token… och lägg in en ny.' : 'Lägg in din token först.'); return; }
+  const key = await behSigKey();
+  if(!key){ say('Lägg in signalkoden först (knappen Signalkod…).'); return; }
   say('Laddar upp…');
   try{
     const rem = await behFetchRemote(tok);
-    const {list, removed} = behBuildList(rem.list);
+    await behReconcile(rem.list, key);
+    const {list, removed} = await behBuildList(rem.list, key);
     if(removed>AUTH_MAX_REVOKE){ say('Åtgärden nekades.'); return; }
     if(!list.keys.length){ say('Åtgärden nekades.'); return; }
     await behPut(tok, rem.sha, list);
-    ensureBeh().dirty = false; ensureBeh().users.forEach(u=>{ delete u.pendingRevoke; }); saveToDisk();
+    const b = ensureBeh(); b.dirty = false; b.recode = false; b.users.forEach(u=>{ delete u.pendingRevoke; delete u.fresh; delete u.edited; }); saveToDisk();
     say('Nyckelkortet är uppladdat ('+list.keys.length+' nycklar).');
     behRenderModal(true);
   }catch(e){ say('Kunde inte ladda upp: '+(e.message||e)); }
 }
-async function behAskToken(){
-  const t = prompt('Klistra in din GitHub-token (sparas krypterad med din PIN-kod):', '');
-  if(t==null) return; const v = t.trim();
-  if(v) await behSetToken(v); else await behSetToken('');
-  behRenderModal();
+/* ----- token med utgångsdatum ----- */
+function openBehTokenModal(){
+  ensureBeh(); closeModal();
+  const info = behTokenInfo();
+  const overlay = document.createElement('div'); overlay.className = 'overlay';
+  overlay.innerHTML = `<div class="modal" style="max-width:460px;"><h3>GitHub-token</h3>
+    <p style="font-size:13px;color:var(--ink-soft);">Klistra in din token och ange sista giltighetsdag. Appen varnar sju dagar innan. Token sparas krypterad med din PIN-kod. Lämna token tom för att ta bort den.</p>
+    <div class="field"><label>Token</label><input id="behTok" type="password" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+    <div class="field" style="margin-top:8px;"><label>Sista giltighetsdag</label><input id="behExp" type="date" min="${behYmd(0)}" max="${behYmd(90)}" value="${behYmd(90)}"></div>
+    <div id="behTokMsg" style="min-height:18px;font-size:13px;color:var(--danger);margin-top:8px;"></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal();openBehModal()">Avbryt</button><button class="btn primary" onclick="behTokenSave()">Spara</button></div></div>`;
+  document.body.appendChild(overlay);
 }
+async function behTokenSave(){
+  const tok = (document.getElementById('behTok').value||'').trim(); const exp = document.getElementById('behExp').value; const m = document.getElementById('behTokMsg');
+  if(tok){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(exp)){ m.textContent = 'Ange sista giltighetsdag.'; return; }
+    if(exp<behYmd(0) || exp>behYmd(90)){ m.textContent = 'Datumet måste ligga mellan i dag och '+behYmd(90)+' (högst 90 dagar). Token sparades inte.'; return; }
+  }
+  await behSetToken(tok, exp);
+  closeModal(); await openBehModal();
+  if(tok) await behSyncFromRemote(tok);
+}
+function behTokenSnooze(){ try{ localStorage.setItem('kompaniregister_tokwarn', behYmd(0)); }catch(e){} renderAll(); }
+function behTokenNotices(){
+  try{
+    const i = behTokenInfo(); if(!i || i.days>7) return [];
+    if(localStorage.getItem('kompaniregister_tokwarn')===behYmd(0)) return [];
+    const text = i.expired ? 'Din GitHub-token har gått ut ('+i.exp+'). Be om en ny token och lägg in den under Behörigheter → Token…'
+      : 'Din GitHub-token går ut '+i.exp+' ('+(i.days<=0?'i dag':'om '+i.days+' dag'+(i.days===1?'':'ar'))+'). Be om en ny token och lägg in den under Behörigheter → Token…';
+    return [{kind:'behtoken', section:'ovrigt', level:'red', groupName:'Behörighet', personName:'', text, sortKey:-310000, ackCall:'behTokenSnooze()', ackLabel:'Påminn imorgon', showCall:'openBehTokenModal()'}];
+  }catch(e){ return []; }
+}
+/* ----- signalkod ----- */
+function openBehSigModal(){
+  ensureBeh(); closeModal();
+  const has = !!localStorage.getItem('kompaniregister_sigkod');
+  const overlay = document.createElement('div'); overlay.className = 'overlay';
+  overlay.innerHTML = `<div class="modal" style="max-width:460px;"><h3>Signalkod</h3>
+    <p style="font-size:13px;color:var(--ink-soft);">Gemensam kod (minst tio tecken) som krypterar anropssignalerna i nyckelfilen på GitHub. Alla som ska se signalerna anger samma kod. ${has?'En kod är sparad. Anger du en ny kod krypteras alla signaler om vid nästa uppladdning, och de andra måste ange den nya koden.':'Ingen kod är sparad ännu.'}</p>
+    <div class="field"><label>Kod</label><input id="behSigIn" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+    <button class="btn tiny" style="margin-top:6px;" onclick="document.getElementById('behSigIn').value=genCode10()">Skapa slumpkod</button>
+    <div id="behSigMsg" style="min-height:18px;font-size:13px;color:var(--danger);margin-top:8px;"></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal();openBehModal()">Avbryt</button><button class="btn primary" onclick="behSigSave()">Spara</button></div></div>`;
+  document.body.appendChild(overlay);
+}
+async function behSigSave(){
+  const code = (document.getElementById('behSigIn').value||'').trim(); const m = document.getElementById('behSigMsg');
+  if(code.length<10){ m.textContent = 'Koden måste vara minst tio tecken.'; return; }
+  const old = await behGetSigCode();
+  try{ localStorage.setItem('kompaniregister_sigkod', await encryptForStorage(code)); }catch(e){ m.textContent = 'Kunde inte spara.'; return; }
+  const b = ensureBeh(); const key = await sigDerive(code, authCo());
+  for(const u of b.users){ if(u.sraw){ const nm = await sigDec(key, u.sraw); if(nm!=null){ u.namn = nm; delete u.sraw; } } }
+  if(old && old!==code) b.recode = true;
+  if(b.recode || b.users.some(u=>u.fresh||u.pendingRevoke||u.edited)) b.dirty = true;
+  saveToDisk(); closeModal(); await openBehModal();
+  const mm = document.getElementById('behMsg'); if(mm) mm.textContent = 'Signalkoden är sparad.'+(b.recode?' Ladda upp nyckelkortet så krypteras signalerna om.':'');
+}
+function behEditSig(id){
+  const b = ensureBeh(); const u = b.users.find(x=>x.id===id); if(!u) return;
+  const v = prompt('Anropssignal för '+id+' (inte riktigt namn):', BEH_PLACEHOLDER.includes(u.namn)?'':u.namn);
+  if(v==null) return; const t = v.trim().slice(0,40); if(!t) return;
+  u.namn = t; u.edited = true; delete u.sraw; b.dirty = true; saveToDisk(); behRenderModal();
+}
+/* ----- synk ----- */
+async function behSyncFromRemote(tok){
+  const msg = document.getElementById('behMsg'); const say = t=>{ if(msg) msg.textContent = t; };
+  say('Synkar mot GitHub…');
+  try{
+    const rem = await behFetchRemote(tok); const key = await behSigKey();
+    const r = await behReconcile(rem.list, key);
+    saveToDisk(); behRenderModal(true);
+    const m2 = document.getElementById('behMsg'); if(m2) m2.textContent = 'Synkat mot GitHub: '+r.rk.size+' nycklar i filen ('+r.added+' nya, '+r.gone+' borttagna lokalt).';
+  }catch(e){ say('Kunde inte synka: '+(e.message||e)); }
+}
+let BEH_LAST_SYNC = 0;
+async function behAutoSync(){
+  try{
+    if(!DATA || !vaultKey || !navigator.onLine) return;
+    if(Date.now()-BEH_LAST_SYNC < 600000) return; BEH_LAST_SYNC = Date.now();
+    const tok = await behGetToken(); let list = null;
+    if(tok){ try{ list = (await behFetchRemote(tok)).list; }catch(e){ list = null; } }
+    if(!list) list = await authFetchList();
+    if(!list || !list.keys.length) return;
+    const key = await behSigKey();
+    const r = await behReconcile(list, key, true);
+    if(r) saveToDisk();
+  }catch(e){}
+}
+/* ----- utfärda och spärra ----- */
 async function behIssue(){
   const nm = (document.getElementById('behNamn').value||'').trim(); const lvl = document.getElementById('behLvl').value;
-  if(!nm){ document.getElementById('behMsg').textContent = 'Skriv vem nyckeln gäller.'; return; }
+  if(!nm){ document.getElementById('behMsg').textContent = 'Skriv anropssignalen.'; return; }
+  if(!localStorage.getItem('kompaniregister_sigkod')){ document.getElementById('behMsg').textContent = 'Lägg in signalkoden först (knappen Signalkod…).'; return; }
   const b = ensureBeh();
-  const key = authGen(); const h = await authHash(key); const id = authMakeId(lvl, h);
-  b.users.push({id, namn:nm.slice(0,60), lvl, h, created:Date.now(), revoked:false}); b.dirty = true; saveToDisk();
+  const key = authGen(); const h = await authHash(key); const id = authMakeId(lvl, h); const shown = authCo()+'-'+key;
+  b.users.push({id, namn:nm.slice(0,40), lvl, h, created:Date.now(), revoked:false, fresh:true}); b.dirty = true; saveToDisk();
   closeModal();
   const overlay = document.createElement('div'); overlay.className = 'overlay';
   overlay.innerHTML = `<div class="modal" style="max-width:460px;"><h3>Nyckel för ${esc(nm)}</h3>
     <p style="font-size:13px;color:var(--ink-soft);">Nivå ${esc(AUTH_LVL_LABEL[lvl])} · id ${esc(id)}. Nyckeln visas <strong>bara nu</strong>. Skicka den till personen på ett säkert sätt (inte i samma kanal som appen). Tryck sedan <strong>Ladda upp nytt nyckelkort</strong> så börjar den gälla.</p>
-    <div style="font-family:var(--font-mono);font-size:20px;letter-spacing:1px;padding:12px;border:1px solid var(--line-strong);border-radius:8px;text-align:center;user-select:all;">${esc(key)}</div>
-    <div class="modal-actions"><button class="btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('${key}').then(()=>{this.textContent='Kopierad'})">Kopiera</button><button class="btn primary" onclick="closeModal();openBehModal()">Klar</button></div></div>`;
+    <div style="font-family:var(--font-mono);font-size:18px;letter-spacing:1px;padding:12px;border:1px solid var(--line-strong);border-radius:8px;text-align:center;user-select:all;word-break:break-all;">${esc(shown)}</div>
+    <div class="modal-actions"><button class="btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('${shown}').then(()=>{this.textContent='Kopierad'})">Kopiera</button><button class="btn primary" onclick="closeModal();openBehModal()">Klar</button></div></div>`;
   document.body.appendChild(overlay);
 }
 function behRevoke(id){
@@ -7745,25 +7926,28 @@ function behRevoke(id){
 function behRenderModal(keepMsg){
   const b = ensureBeh();
   const st = (u)=> u.revoked ? (u.pendingRevoke ? 'Spärrad (ej uppladdad)' : 'Spärrad') : 'Aktiv';
-  const rows = b.users.length ? b.users.map(u=>`<tr><td style="white-space:nowrap;">${esc(u.id)}</td><td>${esc(u.namn)}</td><td>${esc(AUTH_LVL_LABEL[u.lvl]||u.lvl)}<br><span style="color:var(--ink-soft);">${st(u)}</span></td><td>${u.revoked?'':`<button class="btn tiny danger" onclick="behRevoke('${u.id}')">Spärra</button>`}</td></tr>`).join('')
+  const rows = b.users.length ? b.users.map(u=>`<tr><td style="white-space:nowrap;">${esc(u.id)}</td><td>${esc(u.namn)}</td><td>${esc(AUTH_LVL_LABEL[u.lvl]||u.lvl)}<br><span style="color:var(--ink-soft);">${st(u)}</span></td><td style="white-space:nowrap;">${u.revoked?'':`<button class="btn tiny" onclick="behEditSig('${u.id}')">Signal</button><br><button class="btn tiny danger" style="margin-top:4px;" onclick="behRevoke('${u.id}')">Spärra</button>`}</td></tr>`).join('')
     : `<tr><td colspan="4" style="color:var(--ink-faint);">Inga nycklar utfärdade ännu.</td></tr>`;
   const m = document.querySelector('.overlay .modal'); if(!m) return;
   const prevMsg = keepMsg ? (document.getElementById('behMsg')||{}).textContent||'' : '';
-  m.innerHTML = `<h3>Behörigheter</h3>
-    <p style="font-size:13px;color:var(--ink-soft);">Varje användare behöver en nyckel. Nyckeln anges en gång per app, och appen kontrollerar mot listan i repot Behorighet när den är uppkopplad. Spärras en nyckel raderas all data i personens appar. Högst ${AUTH_MAX_REVOKE} spärrar åt gången.</p>
-    <div style="overflow-x:auto;"><table class="mini-table" style="width:100%;font-size:12px;"><thead><tr><th>Id</th><th>Namn</th><th>Nivå · status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+  const ti = behTokenInfo(); const hasTok = !!localStorage.getItem('kompaniregister_ghtoken');
+  const tokLine = !hasTok ? 'Ingen token sparad.' : (ti ? (ti.expired ? 'Token har gått ut ('+ti.exp+').' : 'Token giltig till '+ti.exp+' ('+Math.max(0,ti.days)+' dagar kvar).') : 'Token sparad, utan utgångsdatum – lägg in den igen med datum.');
+  m.innerHTML = `<h3>Behörigheter · kompani ${esc(authCo())}</h3>
+    <p style="font-size:13px;color:var(--ink-soft);">Varje användare behöver en nyckel som börjar med kompanikoden. Nyckeln anges en gång per app, och appen kontrollerar mot listan i repot Behorighet${esc(authCo())} när den är uppkopplad. Spärras en nyckel raderas all data i personens appar. Högst ${AUTH_MAX_REVOKE} spärrar åt gången.</p>
+    <div style="overflow-x:auto;"><table class="mini-table" style="width:100%;font-size:12px;"><thead><tr><th>Id</th><th>Anropssignal</th><th>Nivå · status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="formgrid" style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-top:12px;align-items:end;">
-      <div class="field"><label>Ny nyckel för</label><input id="behNamn" placeholder="Namn"></div>
+      <div class="field"><label>Ny nyckel för (anropssignal)</label><input id="behNamn" placeholder="Anropssignal"></div>
       <div class="field"><label>Nivå</label><select id="behLvl"><option value="grupp">Grupp</option><option value="pluton">Pluton</option><option value="tropp">Tropp</option><option value="kompani">Kompani</option></select></div>
       <button class="btn" onclick="behIssue()">Utfärda</button>
     </div>
     <div id="behMsg" style="min-height:18px;font-size:13px;color:var(--danger);margin-top:8px;">${esc(prevMsg)}</div>
     <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;">
       <button class="btn primary" onclick="behUpload()">Ladda upp nytt nyckelkort${b.dirty?' •':''}</button>
-      <button class="btn" onclick="behAskToken()">Token…</button>
+      <button class="btn" onclick="openBehTokenModal()">Token…</button>
+      <button class="btn" onclick="openBehSigModal()">Signalkod…</button>
       <button class="btn" onclick="closeModal()">Stäng</button>
     </div>
-    <p style="font-size:12px;color:var(--ink-soft);margin-top:8px;">${b.dirty?'Det finns ändringar som inte är uppladdade.':'Nyckelkortet är uppdaterat.'}</p>`;
+    <p style="font-size:12px;color:var(--ink-soft);margin-top:8px;">${esc(tokLine)} ${b.dirty?'Det finns ändringar som inte är uppladdade.':'Nyckelkortet är uppdaterat.'}</p>`;
 }
 async function openBehModal(){
   ensureBeh(); closeModal();
@@ -7773,35 +7957,60 @@ async function openBehModal(){
   document.body.appendChild(overlay);
   behRenderModal();
   const tok = await behGetToken();
-  const msg = document.getElementById('behMsg'); if(msg && !tok) msg.textContent = 'Ingen token sparad – tryck Token… för att lägga in din.';
+  const msg = document.getElementById('behMsg'); if(msg && !tok) msg.textContent = behTokenInfo() && behTokenInfo().expired ? 'Token har gått ut – tryck Token… och lägg in en ny.' : 'Ingen token sparad – tryck Token… för att lägga in din.';
 }
+/* ----- kodverktyg ----- */
+function openCodeGen(){
+  closeModal();
+  const overlay = document.createElement('div'); overlay.className = 'overlay';
+  overlay.onclick = (e)=>{ if(e.target===overlay) closeModal(); };
+  overlay.innerHTML = `<div class="modal" style="max-width:420px;"><h3>Skapa kod</h3>
+    <p style="font-size:13px;color:var(--ink-soft);">Slumpmässig kod på tio tecken (stora och små bokstäver samt siffror, utan tecken som liknar varandra). Duger som delningskod, signalkod och kod i Samband 452. Koden sparas inte – kopiera den innan du stänger.</p>
+    <div id="cgOut" style="font-family:var(--font-mono);font-size:26px;letter-spacing:2px;padding:14px;border:1px solid var(--line-strong);border-radius:8px;text-align:center;user-select:all;"></div>
+    <div class="modal-actions"><button class="btn" onclick="cgNew()">Skapa ny</button><button class="btn" id="cgCopy" onclick="navigator.clipboard&&navigator.clipboard.writeText(CG_CODE).then(()=>{this.textContent='Kopierad'})">Kopiera</button><button class="btn primary" onclick="closeModal()">Stäng</button></div></div>`;
+  document.body.appendChild(overlay); cgNew();
+}
+let CG_CODE = '';
+function cgNew(){ CG_CODE = genCode10(); const o = document.getElementById('cgOut'); if(o) o.textContent = CG_CODE; const c = document.getElementById('cgCopy'); if(c) c.textContent = 'Kopiera'; }
 /* första uppstarten: tom lista -> skapa ägarnyckel */
 async function authBootOwnerUi(){
   const box = document.getElementById('authBoot'); if(!box) return;
-  box.innerHTML = '<hr style="margin:16px 0;border:none;border-top:1px solid #ccc;"><h3 style="margin:0 0 6px;">Första uppstarten</h3><p style="font-size:13px;color:#454B4F;margin:0 0 8px;">Bara för dig som är ägare och startar första gången (listan måste vara tom). Lägg in din GitHub-token så skapar appen din ägarnyckel och laddar upp den.</p>'
+  box.innerHTML = '<hr style="margin:16px 0;border:none;border-top:1px solid #ccc;"><h3 style="margin:0 0 6px;">Första uppstarten</h3><p style="font-size:13px;color:#454B4F;margin:0 0 8px;">Bara för dig som är första användare i kompaniet (listan måste vara tom). Ange kompanikod, GitHub-token och dess sista giltighetsdag. Repot Behorighet&lt;kompanikod&gt; måste finnas och vara publikt.</p>'
+    +'<input id="authCo" type="text" maxlength="3" autocomplete="off" autocapitalize="characters" placeholder="Kompanikod (3 tecken)" style="width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1px solid #888;border-radius:8px;margin-bottom:8px;">'
     +'<input id="authTok" type="password" autocomplete="off" placeholder="GitHub-token" style="width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1px solid #888;border-radius:8px;">'
+    +'<label style="display:block;font-size:12px;margin-top:8px;">Token giltig till <input id="authTokExp" type="date" min="'+behYmd(0)+'" max="'+behYmd(90)+'" value="'+behYmd(90)+'" style="padding:6px;font-size:14px;"></label>'
     +'<button class="btn" style="margin-top:8px;" onclick="authCreateOwner()">Skapa ägarnyckel</button><div id="authOwnerOut"></div>';
 }
 async function authCreateOwner(){
   const tok = (document.getElementById('authTok').value||'').trim(); const out = document.getElementById('authOwnerOut'); const m = document.getElementById('authMsg');
+  const co = authNorm(document.getElementById('authCo').value); const exp = document.getElementById('authTokExp').value;
+  if(!/^[A-Z0-9]{3}$/.test(co)){ m.textContent = 'Ange kompanikoden (tre tecken).'; return; }
   if(!tok){ m.textContent = 'Lägg in token.'; return; }
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(exp) || exp<behYmd(0) || exp>behYmd(90)){ m.textContent = 'Sista giltighetsdag måste ligga inom 90 dagar fram.'; return; }
   m.textContent = 'Skapar…';
   try{
     const key = authGen(), h = await authHash(key), id = authMakeId('kompani', h);
-    const rem = await behFetchRemote(tok);
-    if(rem.list.keys.length){ m.textContent = 'Listan är inte tom. Ange en befintlig nyckel.'; return; }
-    await behPut(tok, rem.sha, {v:1, updated:Date.now(), keys:[{id, h, lvl:'kompani'}]});
+    const rem = await behFetchRemote(tok, co);
+    if(rem.list.keys.length){ m.textContent = 'Nyckelkortet finns redan. Ange din nyckel högst upp. Är du kompaniet lägger du in din token under Behörigheter → Token… efter att du kommit in.'; return; }
+    await behPut(tok, rem.sha, {v:1, updated:Date.now(), keys:[{id, h, lvl:'kompani'}]}, co);
     AUTH_PENDING_TOKEN = tok;
-    try{ localStorage.setItem('kompaniregister_beh_pending', JSON.stringify({users:[{id, namn:'Ägare', lvl:'kompani', h, created:Date.now(), revoked:false}]})); }catch(e){}
-    authSave({h, id, lvl:'kompani', lastOk:Date.now(), seen:[id]});
+    try{ localStorage.setItem('kompaniregister_ghtoken_exp_pending', exp); localStorage.setItem('kompaniregister_beh_pending', JSON.stringify({users:[{id, namn:'Ägare', lvl:'kompani', h, created:Date.now(), revoked:false}]})); }catch(e){}
+    authSave({h, id, lvl:'kompani', co, lastOk:Date.now(), seen:[id]});
     m.textContent = '';
-    out.innerHTML = '<p style="font-size:13px;margin:10px 0 4px;"><strong>Din ägarnyckel (visas bara nu – skriv ned den):</strong></p><div style="font-family:monospace;font-size:19px;letter-spacing:1px;padding:10px;border:1px solid #888;border-radius:8px;text-align:center;user-select:all;">'+key+'</div><button class="btn primary" style="margin-top:10px;" onclick="authGateClose();try{renderAll()}catch(e){}">Fortsätt</button>';
+    out.innerHTML = '<p style="font-size:13px;margin:10px 0 4px;"><strong>Din ägarnyckel (visas bara nu – skriv ned den):</strong></p><div style="font-family:monospace;font-size:18px;letter-spacing:1px;padding:10px;border:1px solid #888;border-radius:8px;text-align:center;user-select:all;word-break:break-all;">'+co+'-'+key+'</div><button class="btn primary" style="margin-top:10px;" onclick="authGateClose();try{renderAll()}catch(e){}">Fortsätt</button>';
   }catch(e){ m.textContent = 'Kunde inte skapa: '+(e.message||e); }
 }
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', authBoot); else authBoot();
 
 const APP_CHANGELOG = [
+  {version:'2026-10-29', title:'Kompanikod i nyckeln', items:[
+    'Behörighetsnycklar börjar nu med kompanikoden (tre tecken), till exempel 452-XXXXX-…. Varje kompani har sitt eget nyckelkort i repot Behorighet<kod>. Nycklar utan kod räknas som 452.',
+    'Behörigheter: nyckeln utfärdas för en anropssignal (inte riktigt namn). Signalerna krypteras med en gemensam signalkod på minst tio tecken (knappen Signalkod…) innan de laddas upp. Utan koden visas (krypterat).',
+    'Appen synkar tyst nyckellistan mot GitHub när den öppnas med uppkoppling. GitHub-filen är facit. Din egen lista uppdateras utan att något laddas upp.',
+    'Token: du anger sista giltighetsdag (högst 90 dagar) när du lägger in en token. Sju dagar innan visas en notis om att be om ny token.',
+    'Nytt verktyg Skapa kod i menyn: slumpkod på tio tecken för delningskoder, signalkod och Samband 452.'
+  ]},
   {version:'2026-10-28', title:'Ett register per enhet, låst struktur och nycklar', items:[
     'Behörighetsnycklar: nytt verktyg Behörigheter i menyn där du utfärdar och spärrar nycklar och laddar upp nytt nyckelkort till GitHub. Appen kräver själv en nyckel, kontrollerar den mot listan, låser efter 14 dagar utan kontroll och raderas om nyckeln spärras.',
     'Ett register per enhet: det går inte längre att skapa fler register eller växla mellan dem. Har du flera register på enheten får du välja vilket du vill behålla – övriga raderas. Säkerhetskopian (Exportera JSON) finns kvar.',
@@ -7853,7 +8062,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v14';
+const SW_CACHE_VERSION = 'kompaniregister-v19';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 function maybeShowWhatsNew(){
