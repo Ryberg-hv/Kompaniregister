@@ -7498,9 +7498,9 @@ function renderSetup(){
 }
 
 
-/* ---------- BEHORIGHET_V4: nyckel som kontrolleras mot listan i repot Behorigheter ---------- */
-const AUTH_URL = 'https://raw.githubusercontent.com/Ryberg-hv/Behorigheter/main/nycklar.json';
-const AUTH_API = 'https://api.github.com/repos/Ryberg-hv/Behorigheter/contents/nycklar.json';
+/* ---------- BEHORIGHET_V4: nyckel som kontrolleras mot listan i repot Behorighet ---------- */
+const AUTH_URL = 'https://raw.githubusercontent.com/Ryberg-hv/Behorighet/main/nycklar.json';
+const AUTH_API = 'https://api.github.com/repos/Ryberg-hv/Behorighet/contents/nycklar.json';
 const AUTH_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const AUTH_GRACE_DAYS = 14, AUTH_WARN_DAYS = 11, AUTH_MAX_REVOKE = 5;
 const AUTH_NAME = {grupp:'gruppregister', pluton:'personalregister', tropp:'troppregister', kompani:'kompaniregister'}[APP_KEY];
@@ -7750,7 +7750,7 @@ function behRenderModal(keepMsg){
   const m = document.querySelector('.overlay .modal'); if(!m) return;
   const prevMsg = keepMsg ? (document.getElementById('behMsg')||{}).textContent||'' : '';
   m.innerHTML = `<h3>Behörigheter</h3>
-    <p style="font-size:13px;color:var(--ink-soft);">Varje användare behöver en nyckel. Nyckeln anges en gång per app, och appen kontrollerar mot listan i repot Behorigheter när den är uppkopplad. Spärras en nyckel raderas all data i personens appar. Högst ${AUTH_MAX_REVOKE} spärrar åt gången.</p>
+    <p style="font-size:13px;color:var(--ink-soft);">Varje användare behöver en nyckel. Nyckeln anges en gång per app, och appen kontrollerar mot listan i repot Behorighet när den är uppkopplad. Spärras en nyckel raderas all data i personens appar. Högst ${AUTH_MAX_REVOKE} spärrar åt gången.</p>
     <div style="overflow-x:auto;"><table class="mini-table" style="width:100%;font-size:12px;"><thead><tr><th>Id</th><th>Namn</th><th>Nivå · status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="formgrid" style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-top:12px;align-items:end;">
       <div class="field"><label>Ny nyckel för</label><input id="behNamn" placeholder="Namn"></div>
@@ -7779,8 +7779,8 @@ async function openBehModal(){
 async function authBootOwnerUi(){
   const box = document.getElementById('authBoot'); if(!box) return;
   const list = await authFetchList();
-  if(!list || list.keys.length) return;
-  box.innerHTML = '<hr style="margin:16px 0;border:none;border-top:1px solid #ccc;"><h3 style="margin:0 0 6px;">Första uppstarten</h3><p style="font-size:13px;color:#454B4F;margin:0 0 8px;">Nyckelkortet är tomt. Lägg in din GitHub-token så skapar appen din ägarnyckel och laddar upp den.</p>'
+  if(list && list.keys.length) return;
+  box.innerHTML = '<hr style="margin:16px 0;border:none;border-top:1px solid #ccc;"><h3 style="margin:0 0 6px;">Första uppstarten</h3><p style="font-size:13px;color:#454B4F;margin:0 0 8px;">Nyckelkortet är tomt eller kunde inte läsas. Lägg in din GitHub-token så skapar appen din ägarnyckel och laddar upp den.</p>'
     +'<input id="authTok" type="password" autocomplete="off" placeholder="GitHub-token" style="width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1px solid #888;border-radius:8px;">'
     +'<button class="btn" style="margin-top:8px;" onclick="authCreateOwner()">Skapa ägarnyckel</button><div id="authOwnerOut"></div>';
 }
@@ -7855,7 +7855,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v11';
+const SW_CACHE_VERSION = 'kompaniregister-v13';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 function maybeShowWhatsNew(){
