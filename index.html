@@ -7729,8 +7729,8 @@ function behMerge(o){
     o.u.forEach(u=>{
       if(!u || !u.id || !u.h) return;
       const x = b.users.find(y=>y.id===u.id);
-      if(!x){ b.users.push({id:u.id, namn:u.namn||'', lvl:u.lvl, h:u.h, created:u.created||Date.now(), revoked:!!u.revoked}); n++; }
-      else if(u.revoked && !x.revoked){ x.revoked = true; n++; }
+      if(!x){ if(!u.revoked){ b.users.push({id:u.id, namn:u.namn||'', lvl:u.lvl, h:u.h, created:u.created||Date.now(), revoked:false}); n++; } }
+      else if(u.revoked && !x.revoked){ x.revoked = true; x.pendingRevoke = true; n++; }
     });
     if(n){ b.dirty = true; saveToDisk(); }
   }catch(e){}
@@ -7773,7 +7773,8 @@ async function behReconcile(remoteList, key, auto){
       else { u.sraw = k.s; if(u.namn==='(okänd)') u.namn = '(krypterat)'; }
     }
   }
-  goneList.forEach(u=>{ u.revoked = true; delete u.pendingRevoke; });
+  /* nycklar som saknas i filen och spärrade utan väntande uppladdning rensas bort */
+  b.users = b.users.filter(u=>!( (u.revoked && !u.pendingRevoke && !rk.has(u.id)) || goneList.includes(u) ));
   b.dirty = b.users.some(u=>u.fresh || u.pendingRevoke || u.edited) || !!b.recode;
   return {rk, added, gone:goneList.length};
 }
@@ -7806,7 +7807,7 @@ async function behUpload(){
     if(removed>AUTH_MAX_REVOKE){ say('Åtgärden nekades.'); return; }
     if(!list.keys.length){ say('Åtgärden nekades.'); return; }
     await behPut(tok, rem.sha, list);
-    const b = ensureBeh(); b.dirty = false; b.recode = false; b.users.forEach(u=>{ delete u.pendingRevoke; delete u.fresh; delete u.edited; }); saveToDisk();
+    const b = ensureBeh(); b.dirty = false; b.recode = false; b.users = b.users.filter(u=>!u.revoked); b.users.forEach(u=>{ delete u.pendingRevoke; delete u.fresh; delete u.edited; }); saveToDisk();
     say('Nyckelkortet är uppladdat ('+list.keys.length+' nycklar).');
     behRenderModal(true);
   }catch(e){ say('Kunde inte ladda upp: '+(e.message||e)); }
@@ -8009,6 +8010,7 @@ const APP_CHANGELOG = [
     'Behörigheter: nyckeln utfärdas för en anropssignal (inte riktigt namn). Signalerna krypteras med en gemensam signalkod på minst tio tecken (knappen Signalkod…) innan de laddas upp. Utan koden visas (krypterat).',
     'Appen synkar tyst nyckellistan mot GitHub när den öppnas med uppkoppling. GitHub-filen är facit. Din egen lista uppdateras utan att något laddas upp.',
     'Token: du anger sista giltighetsdag (högst 90 dagar) när du lägger in en token. Sju dagar innan visas en notis om att be om ny token.',
+    'Spärrade nycklar tas bort ur listan när nyckelkortet laddats upp.',
     'Nytt verktyg Skapa kod i menyn: slumpkod på tio tecken för delningskoder, signalkod och Samband 452.'
   ]},
   {version:'2026-10-28', title:'Ett register per enhet, låst struktur och nycklar', items:[
@@ -8062,7 +8064,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v19';
+const SW_CACHE_VERSION = 'kompaniregister-v20';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 function maybeShowWhatsNew(){
