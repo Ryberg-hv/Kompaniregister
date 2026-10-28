@@ -1,7 +1,7 @@
 /* Service worker för Kompaniregister.
    Höj VERSION vid varje ny uppladdning så att gamla filer rensas.
    Ändra samtidigt SW_CACHE_VERSION i index.html till samma värde. */
-const VERSION = 'kompaniregister-v13';
+const VERSION = 'kompaniregister-v14';
 const CORE = [
   './',
   './index.html',
