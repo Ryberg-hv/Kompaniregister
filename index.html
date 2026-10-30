@@ -3108,6 +3108,7 @@ function renderTopbar(){
     html += `<button class="btn small" onclick="goOverview()">Övningsöversikt</button>`;
     html += `<button class="btn small" onclick="goGradOverview()">Grader</button>`;
     html += `<button class="btn small" onclick="goStats()">Statistik</button>`;
+    html += `<button class="btn small" onclick="openStatExport()" title="Exportera summerade siffror till bataljonen">Exportera statistik</button>`;
     html += `<button class="btn small" onclick="openExportModal('all')">Exportera allt</button>`;
     html += `<button class="btn small" onclick="openImportModal()">Importera personal</button>`;
     html += `<button class="btn small" onclick="toggleColumnPanel()">Ordna uppgifter</button>`;
@@ -4640,6 +4641,7 @@ function renderStats(){
       ${compSection}
       <p style="margin-top:12px;color:var(--ink-soft);font-size:12px;">Endast kompetenser markerade "Visa i statistik" räknas här — det gäller både grundkompetenserna och egna tillagda. Grundutbildningarna GU, FMU och GUF visas i egen tabell nedan.</p>
     </div>
+    ${nyckeltalPanelHtml()}
     ${grundutbPanelHtml()}
     ${renderContractFulfillment(inPluton)}
   `;
@@ -5077,6 +5079,77 @@ function askShareCodeModal(text){
   });
 }
 /* ---- exportflödet ---- */
+/* STATFIL_V10: statistikfil (summerade värden, inga personer) för bataljonen */
+function statIsReserve(p){ const g = getGroup(p.groupId); return !!(g && (g.kind==='reserve' || g.name==='Personalreserv')); }
+function statPopulation(){ return DATA.persons.filter(p=>{ const k = groupKind(p.groupId); return k!=='recruit' && k!=='offboarding' && !p.vilande; }); }
+function statYearFulfilled(list, y){
+  const ful = list.filter(p=>{ const yr = p.ovningar && p.ovningar[y]; return !!yr && EXERCISE_TYPES.every(t=>yr[t.key] && yr[t.key].status==='narvarande'); }).length;
+  return {y, ful, n:list.length};
+}
+function statValidSkyddsvakt(p){
+  const k = p.kompetenser && p.kompetenser.skyddsvakt;
+  if(!k || !k.has || !k.utgangsdatum) return false;
+  const d = new Date(k.utgangsdatum+'T00:00:00'); if(isNaN(d.getTime())) return false;
+  const now = new Date(); now.setHours(0,0,0,0);
+  return d>=now;
+}
+function statGrund(list){
+  const c = {gu:0, fmu:0, guf:0, saknar:0, blaband:0};
+  list.forEach(p=>{
+    if(isTrainee(p) && !hasGrundutb(p)){ c.saknar++; c.blaband++; return; }
+    const id = grundutbId(p); if(id) c[id]++; else c.saknar++;
+  });
+  return c;
+}
+function statSnapshot(){
+  const list = statPopulation(); const now = new Date(); const yr = now.getFullYear();
+  const typ = APP_KEY==='kompani' ? 'kompani' : APP_KEY==='grupp' ? 'grupp' : ((typeof isMusik==='function' && isMusik()) ? 'musikkar' : 'pluton');
+  const enhet = ({grupp:'Grupp', pluton:'Pluton'+(DATA.pluton?' '+DATA.pluton:''), kompani:'Kompani'+(DATA.kompani?' '+DATA.kompani:'')})[APP_KEY] || APP_KEY;
+  return {v:1, app:APP_KEY, typ, enhet, namn:DATA.title||'', d:now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0'),
+    dyg:avtalsdygn(), n:list.length, res:list.filter(statIsReserve).length,
+    avt:[statYearFulfilled(list,yr-1), statYearFulfilled(list,yr)],
+    sv:{ok:list.filter(statValidSkyddsvakt).length, n:list.length}, gu:statGrund(list)};
+}
+function openStatExport(){
+  customShare = {plain:'#PR-STAT1 '+JSON.stringify(statSnapshot()), title:'statistik', kind:'statistik'};
+  closeModal();
+  const ov = document.createElement('div'); ov.className = 'overlay'; ov.innerHTML = '<div class="modal"></div>'; document.body.appendChild(ov);
+  openShareExport('custom');
+}
+
+/* NYCKELTAL_V10: lokala mål för de värden bataljonen följer */
+function statGoalRowPct(key, label, cur, note){
+  const mal = DATA.mal || {};
+  const goal = (mal[key]===undefined || mal[key]===null) ? null : mal[key];
+  const reached = goal!=null && cur>=goal;
+  return `<tr>
+    <td>${esc(label)}${note?`<div style="font-size:11px;color:var(--ink-faint);">${esc(note)}</div>`:''}</td>
+    <td>${cur}%</td>
+    <td><input type="number" min="0" max="100" value="${goal!=null?goal:''}" placeholder="—" onchange="setGoal('${key}', this.value)"> %</td>
+    <td class="${goal==null?'':(reached?'pctgood':'pctneed')}">${goal==null ? '–' : (reached ? 'Målet nått' : (Math.round((goal-cur)*10)/10)+' procentenheter kvar')}</td>
+  </tr>`;
+}
+function nyckeltalPanelHtml(){
+  const s = statSnapshot(); const pct = (a,b)=> b ? Math.round(1000*a/b)/10 : 0;
+  const g = s.gu; const big = ['gu','fmu','guf'].map(k=>[k,g[k]]).sort((a,b)=>b[1]-a[1]);
+  const bigTxt = (big[0][1]>0) ? big[0][0].toUpperCase()+' ('+big[0][1]+' personer)' : '–';
+  const rows = [
+    statGoalRow('nt_n','Antal personal (inkl. personalreserv)', s.n),
+    statGoalRowPct('nt_res','Andel i personalreserv', pct(s.res,s.n), 'Personalreserv delat med all personal'),
+    statGoalRowPct('nt_avt0','Avtalsuppfyllnad '+s.avt[0].y, pct(s.avt[0].ful,s.avt[0].n), 'Enligt enhetens egen regel ('+s.dyg+' avtalsdygn)'),
+    statGoalRowPct('nt_avt1','Avtalsuppfyllnad '+s.avt[1].y, pct(s.avt[1].ful,s.avt[1].n), 'Enligt enhetens egen regel ('+s.dyg+' avtalsdygn)'),
+    statGoalRowPct('nt_sv','Giltigt skyddsvaktsbevis', pct(s.sv.ok,s.sv.n), 'Andel av personalen med kompetensen och giltigt utgångsdatum'),
+  ].join('');
+  return `<div class="panel" style="margin-bottom:18px;">
+    <h3 style="font-size:15px;margin-bottom:6px;">Nyckeltal till bataljonen</h3>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Personal = alla i grupperna utom Ny personal och Avveckling (personalreserven ingår). Målen sparas bara här i kompaniet. Största grundutbildning: <strong>${esc(bigTxt)}</strong>.</div>
+    <table class="full stats" style="min-width:0;">
+      <thead><tr><th>Nyckeltal</th><th>Nuvarande</th><th>Mål</th><th>Behov</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:10px;"><button class="btn small" onclick="openStatExport()">Exportera statistik till bataljonen</button></div>
+  </div>`;
+}
 let shareExportState = null;
 async function openShareExport(scope, gid){
   let plain, title, kind = scope;
@@ -5135,7 +5208,7 @@ async function runShareExport(){
   const modal = document.querySelector('.overlay .modal');
   modal.innerHTML = `
     <h3>Klart att skicka</h3>
-    <p style="color:var(--ink-soft);font-size:13px;margin-bottom:10px;">Texten är krypterad (${text.length.toLocaleString('sv-SE')} tecken). Skicka filen i Slack som bilaga; ${shareExportState.kind==='tavla' ? 'mottagaren hämtar filen, väljer <strong>Importera lappar</strong> på anslagstavlan och anger delningskoden. Lapparna sätts upp eller uppdateras — inget tas bort.</p>' : shareExportState.kind==='kalender' ? 'mottagaren hämtar filen, väljer <strong>Importera händelser</strong> i kalendern och anger delningskoden. Händelserna läggs till eller uppdateras — inget tas bort.</p>' : `mottagaren hämtar filen, väljer <strong>Importera från Slack</strong> i gruppen eller <strong>Importera personal → Hela kompaniet</strong> och anger delningskoden.</p>`}
+    <p style="color:var(--ink-soft);font-size:13px;margin-bottom:10px;">Texten är krypterad (${text.length.toLocaleString('sv-SE')} tecken). Skicka filen i Slack som bilaga; ${shareExportState.kind==='tavla' ? 'mottagaren hämtar filen, väljer <strong>Importera lappar</strong> på anslagstavlan och anger delningskoden. Lapparna sätts upp eller uppdateras — inget tas bort.</p>' : shareExportState.kind==='statistik' ? 'mottagaren hämtar filen och läser in den i Bataljonsregistret under <strong>Statistik</strong>. Filen innehåller bara summerade siffror, inga personer.</p>' : shareExportState.kind==='kalender' ? 'mottagaren hämtar filen, väljer <strong>Importera händelser</strong> i kalendern och anger delningskoden. Händelserna läggs till eller uppdateras — inget tas bort.</p>' : `mottagaren hämtar filen, väljer <strong>Importera från Slack</strong> i gruppen eller <strong>Importera personal → Hela kompaniet</strong> och anger delningskoden.</p>`}
     ${tooLong ? `<div class="banner" style="margin-bottom:10px;">Texten är lång och kan bli för lång för ett Slack-meddelande. Använd <strong>Spara som fil</strong> och skicka filen i Slack i stället — mottagaren kan välja filen i importdialogen.</div>` : ''}
     <textarea readonly style="width:100%;height:140px;font-family:var(--font-mono);font-size:11px;border:1px solid var(--line-strong);border-radius:var(--radius);padding:8px;">${esc(text)}</textarea>
     <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;">
@@ -6108,6 +6181,7 @@ function splitExtras(text){
   return out;
 }
 async function routeImport(text, personsFn, ctxGid){
+  if(/#PR-STAT1\s/.test(text||'')){ closeModal(); setTimeout(()=>alert('Det här är en statistikfil. Den läses in i Bataljonsregistret, inte här.'),50); return; }
   const ex = splitExtras(text);
   if(/•/.test(ex.text)){ const rd = (ex.dyg && ex.dyg.d===4) ? 4 : 8; if(rd!==avtalsdygn()){ closeModal(); setTimeout(()=>alert('Importen stoppades. Filen kommer från ett register med '+rd+' avtalsdygn, men det här registret har '+avtalsdygn()+' avtalsdygn. Import mellan 4 och 8 avtalsdygn är inte möjlig.'),50); return; } }
   if(ex.str) handleIncomingStructure(ex.str, ctxGid);
@@ -8295,6 +8369,9 @@ async function authCreateOwner(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', authBoot); else authBoot();
 
 const APP_CHANGELOG = [
+  {version:'2026-10-30.5', title:'Statistik till bataljonen', items:[
+    'Nytt: Nyckeltal till bataljonen på statistiksidan, med egna mål för personal, andel i personalreserv, avtalsuppfyllnad och giltigt skyddsvaktsbevis. Ny knapp Exportera statistik skapar en krypterad fil med bara summerade siffror (antal personal, personalreserv, avtalsuppfyllnad, skyddsvakt och grundutbildning), inga personer. Filen läses in i Bataljonsregistret.'
+  ]},
   {version:'2026-10-30.3', title:'Avtalsdygn 4 eller 8', items:[
     'Nytt val: 4 eller 8 avtalsdygn. Vid 8 avtalsdygn gäller SÖF och KFÖ som tidigare. Vid 4 avtalsdygn (bevakning) finns endast KFÖ: SÖF döljs, uppfyllt avtalsår kräver bara KFÖ och blåbandare räknar KFÖ mot de fyra övningarna. Nya register frågar vid start, befintliga fortsätter med 8. Valet ändras under Avtalsdygn i menyn och kräver bekräftelse. Export och import fungerar bara mellan register med samma val.'
   ]},
@@ -8367,7 +8444,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v23';
+const SW_CACHE_VERSION = 'kompaniregister-v24';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 function maybeShowWhatsNew(){
