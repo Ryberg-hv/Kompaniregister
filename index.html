@@ -6180,7 +6180,42 @@ function splitExtras(text){
   });
   return out;
 }
+/* KPL1_V1: bataljonen placerar KompC och Stf KompC (enda raderna bataljonen får ändra) */
+function kplApply(text){
+  const m = String(text).match(/#PR-KPL1[ \t]+(\{.*\})/); let o = null;
+  try{ o = m ? JSON.parse(m[1]) : null; }catch(e){}
+  if(!o || o.v!==1 || !Array.isArray(o.r)){ alert('Texten från bataljonen kunde inte läsas.'); return; }
+  const g = getGroup('k1');
+  if(!g){ alert('Ledningsgruppen finns inte.'); return; }
+  const names = ['KompC','Stf KompC'];
+  const norm = s=>String(s||'').trim().toLowerCase();
+  const plan = []; const skipped = [];
+  o.r.slice(0,2).forEach((e,i)=>{
+    if(!e || !e.n) return;
+    const idx = g.slots.findIndex(s=>norm(s.befattning)===norm(names[i]));
+    if(idx<0){ skipped.push(e.n+' (raden '+names[i]+' finns inte)'); return; }
+    const anr = normAnr(e.a);
+    let p = null;
+    if(anr) p = DATA.persons.find(x=>normAnr(x.anstallningsnummer)===anr) || null;
+    if(!p) p = DATA.persons.find(x=>norm(fullName(x))===norm(e.n)) || null;
+    if(p && !(p.groupId==='k1' || p.groupId==='k2' || p.groupId==='k7' || p.groupId==='k8')){ const og = getGroup(p.groupId); skipped.push(e.n+' (finns i '+(og?og.name:'annan grupp')+')'); return; }
+    plan.push({name:e.n, row:names[i], idx, p});
+  });
+  if(!plan.length){ alert('Inget att läsa in.'+(skipped.length ? '\n\nHoppades över: '+skipped.join(', ') : '')); return; }
+  const txt = 'Bataljonen har placerat:\n\n'+plan.map(x=>'• '+x.name+' som '+x.row+(x.p ? '' : ' (finns inte i registret, läggs till)')).join('\n')+(skipped.length ? '\n\nHoppas över: '+skipped.join(', ') : '')+'\n\nEventuell person som står på raden idag blir kvar i ledningsgruppen utan fast rad. Läs in?';
+  if(!confirm(txt)) return;
+  IMPORT_SNAP = JSON.stringify(DATA);
+  plan.forEach(x=>{
+    let p = x.p;
+    if(!p){ p = emptyPerson('k1'); p.namn = x.name; p.sortIndex = nextSortIndex(); DATA.persons.push(p); }
+    DATA.persons.forEach(q=>{ if(q!==p && q.groupId==='k1' && q.slotIndex===x.idx) q.slotIndex = null; });
+    p.groupId = 'k1'; p.slotIndex = x.idx; p.enhet = null; p.fordelad = false;
+  });
+  saveToDisk(); renderAll();
+  setTimeout(()=>alert('Placeringen från bataljonen är inläst.'),50);
+}
 async function routeImport(text, personsFn, ctxGid){
+  if(/#PR-KPL1[ \t]+\{/.test(text||'')){ closeModal(); kplApply(text); return; }
   if(/#PR-STAT1\s/.test(text||'')){ closeModal(); setTimeout(()=>alert('Det här är en statistikfil. Den läses in i Bataljonsregistret, inte här.'),50); return; }
   const ex = splitExtras(text);
   if(/•/.test(ex.text)){ const rd = (ex.dyg && ex.dyg.d===4) ? 4 : 8; if(rd!==avtalsdygn()){ closeModal(); setTimeout(()=>alert('Importen stoppades. Filen kommer från ett register med '+rd+' avtalsdygn, men det här registret har '+avtalsdygn()+' avtalsdygn. Import mellan 4 och 8 avtalsdygn är inte möjlig.'),50); return; } }
@@ -7847,11 +7882,11 @@ async function authCheck(){
 }
 async function authWipe(){
   try{
-    Object.keys(localStorage).forEach(k=>{ if(/^(gruppregister|personalregister|troppregister|kompaniregister)[_:]/.test(k)) localStorage.removeItem(k); });
+    Object.keys(localStorage).forEach(k=>{ if(/^(gruppregister|personalregister|troppregister|kompaniregister|bataljonsregister)[_:]/.test(k)) localStorage.removeItem(k); });
   }catch(e){}
   try{ sessionStorage.clear(); }catch(e){}
-  try{ const ks = await caches.keys(); await Promise.all(ks.filter(k=>/^(gruppregister|personalregister|troppregister|kompaniregister)-/.test(k)).map(k=>caches.delete(k))); }catch(e){}
-  try{ const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.filter(r=>/\/(gruppregister|personalregister|troppregister|kompaniregister)\//i.test(r.scope)).map(r=>r.unregister())); }catch(e){}
+  try{ const ks = await caches.keys(); await Promise.all(ks.filter(k=>/^(gruppregister|personalregister|troppregister|kompaniregister|bataljonsregister)-/.test(k)).map(k=>caches.delete(k))); }catch(e){}
+  try{ const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.filter(r=>/\/(gruppregister|personalregister|troppregister|kompaniregister|bataljonsregister)\//i.test(r.scope)).map(r=>r.unregister())); }catch(e){}
   try{ DATA = null; vaultKey = null; currentPin = null; }catch(e){}
 }
 function authGate(html, kind){
@@ -8369,6 +8404,9 @@ async function authCreateOwner(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', authBoot); else authBoot();
 
 const APP_CHANGELOG = [
+  {version:'2026-10-30.7', title:'Placering från bataljonen', items:[
+    'Bataljonen kan skicka placering av KompC och Stf KompC. Läs in texten med Importera personal. Övriga rader i ledningsgruppen ändras inte.'
+  ]},
   {version:'2026-10-30.5', title:'Statistik till bataljonen', items:[
     'Nytt: Nyckeltal till bataljonen på statistiksidan, med egna mål för personal, andel i personalreserv, avtalsuppfyllnad och giltigt skyddsvaktsbevis. Ny knapp Exportera statistik skapar en krypterad fil med bara summerade siffror (antal personal, personalreserv, avtalsuppfyllnad, skyddsvakt och grundutbildning), inga personer. Filen läses in i Bataljonsregistret.'
   ]},
@@ -8444,7 +8482,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v24';
+const SW_CACHE_VERSION = 'kompaniregister-v25';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 function maybeShowWhatsNew(){
