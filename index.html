@@ -15,6 +15,17 @@
 <style>
   /* Typsnittet ligger i appen — inga anrop till Google Fonts */
   @font-face{font-family:'Allerta Stencil';src:url('AllertaStencil-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap;}
+
+  /* MOBTAB_V1: tabeller ryms i den vita rutan på telefon */
+  @media (max-width:760px){
+    .panel{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    table.full.stats td, table.full.stats th{white-space:normal !important;padding:8px 6px;font-size:12px;overflow-wrap:anywhere;}
+    table.full.stats th{font-size:9px;letter-spacing:0;overflow-wrap:normal;word-break:normal;padding:8px 3px;}
+    table.full.stats td:first-child{font-size:11px;overflow-wrap:break-word !important;}
+    table.full.stats input[type=number]{width:56px;padding:4px 2px;}
+    table.full.stats td:first-child, table.full.stats th:first-child{position:sticky;left:0;background:var(--panel);z-index:1;}
+    table.gradeTable th, table.gradeTable td{padding:6px 6px;font-size:12px;white-space:normal !important;}
+  }
 </style>
 <script src="xlsx.full.min.js"></script>
 <style>
@@ -4983,6 +4994,8 @@ setInterval(()=>{ if(vaultKey && !lockMode && Date.now()-lastActivity > AUTOLOCK
 const SHARE_TAG = 'PRX1.';
 const SHARE_MIN_LEN = 8;
 const LS_SHARE = 'kompaniregister_sharecode';
+const LS_SHARE_BAT = 'kompaniregister_sharecode_bat';
+const SHARE_DUAL = ['kompani'].includes(APP_KEY);  /* TVAKODER_V1 */
 const SLACK_SAFE_LEN = 35000;
 async function compressBytes(u8){
   if(typeof CompressionStream==='undefined') return null;
@@ -5027,13 +5040,14 @@ async function decryptShared(b64, code){
   }
   return new TextDecoder().decode(body);
 }
-async function getRememberedShareCode(){
-  try{ const raw = localStorage.getItem(LS_SHARE); return raw ? await decryptFromStorage(raw) : ''; }catch(e){ return ''; }
+async function getRememberedShareCode(which){
+  try{ const raw = localStorage.getItem(which==='bat' ? LS_SHARE_BAT : LS_SHARE); return raw ? await decryptFromStorage(raw) : ''; }catch(e){ return ''; }
 }
-async function setRememberedShareCode(code){
+async function setRememberedShareCode(code, which){
+  const K = which==='bat' ? LS_SHARE_BAT : LS_SHARE;
   try{
-    if(code) localStorage.setItem(LS_SHARE, await encryptForStorage(code));
-    else localStorage.removeItem(LS_SHARE);
+    if(code) localStorage.setItem(K, await encryptForStorage(code));
+    else localStorage.removeItem(K);
   }catch(e){}
 }
 /* Om texten är krypterad: prova sparad delningskod, annars fråga.
@@ -5041,15 +5055,16 @@ async function setRememberedShareCode(code){
 async function openSharedText(text){
   const b64 = extractShared(text);
   if(!b64) return text;
-  const saved = await getRememberedShareCode();
-  if(saved){ try{ return await decryptShared(b64, saved); }catch(e){ /* fråga nedan */ } }
+  const savedC = await getRememberedShareCode(), savedB = SHARE_DUAL ? await getRememberedShareCode('bat') : '';
+  for(const c of [savedC, savedB]){ if(c){ try{ return await decryptShared(b64, c); }catch(e){ /* prova nästa */ } } }
+  const saved = savedC || savedB;
   let msg = saved ? 'Den sparade delningskoden passade inte. Ange delningskoden som användes för den här exporten.' : 'Texten är krypterad. Ange delningskoden du fått av avsändaren.';
   for(let tries=0; tries<5; tries++){
     const r = await askShareCodeModal(msg);
     if(!r) throw new Error('avbrutet');
     try{
       const out = await decryptShared(b64, r.code);
-      if(r.remember) await setRememberedShareCode(r.code);
+      if(r.remember) await setRememberedShareCode(r.code, r.target==='bat' ? 'bat' : undefined);
       return out;
     }catch(e){ msg = (e.message==='fel delningskod') ? 'Fel delningskod. Försök igen.' : ('Kunde inte läsa texten: '+e.message); }
   }
@@ -5063,6 +5078,7 @@ function askShareCodeModal(text){
       <h3>Delningskod</h3>
       <p style="color:var(--ink-soft);font-size:13px;">${esc(text)}</p>
       <div class="field"><input id="shareCodeIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      ${SHARE_DUAL ? '<div class="field"><label>Spara koden som</label><select id="shareTargetIn"><option value="company">Kompaniets kod</option><option value="bat">Bataljonens kod</option></select></div>' : ''}
       <label class="checkwrap" style="margin-top:8px;font-size:13px;"><input type="checkbox" onchange="document.getElementById('shareCodeIn').type=this.checked?'text':'password'"> Visa koden</label>
       <label class="checkwrap" style="margin-top:6px;font-size:13px;"><input type="checkbox" id="shareCodeRem" checked> Kom ihåg koden på den här enheten</label>
       <div class="modal-actions">
@@ -5073,7 +5089,7 @@ function askShareCodeModal(text){
     const inp = overlay.querySelector('#shareCodeIn');
     const done = v=>{ overlay.remove(); resolve(v); };
     overlay.querySelector('#shareCancel').onclick = ()=>done(null);
-    overlay.querySelector('#shareOk').onclick = ()=>{ if(inp.value) done({code:inp.value, remember:overlay.querySelector('#shareCodeRem').checked}); else inp.focus(); };
+    overlay.querySelector('#shareOk').onclick = ()=>{ if(inp.value) done({code:inp.value, remember:overlay.querySelector('#shareCodeRem').checked, target:(overlay.querySelector('#shareTargetIn')||{}).value||'company'}); else inp.focus(); };
     inp.onkeydown = e=>{ if(e.key==='Enter') overlay.querySelector('#shareOk').click(); };
     setTimeout(()=>inp.focus(), 0);
   });
@@ -5171,13 +5187,17 @@ async function openShareExport(scope, gid){
   plain = withStructure(plain, scope, gid);
   if(scope!=='custom' && avtalsdygn()===4) plain = '#PR-DYG1 {"d":4}\n' + plain;
   shareExportState = {plain, title, text:null, kind};
-  const saved = await getRememberedShareCode();
+  const savedC = await getRememberedShareCode(), savedB = SHARE_DUAL ? await getRememberedShareCode('bat') : '';
+  shareExportState.savedC = savedC; shareExportState.savedB = savedB;
+  const defBat = SHARE_DUAL && kind==='statistik';
+  const saved = defBat ? savedB : savedC;
   const modal = document.querySelector('.overlay .modal');
   if(!modal) return;
   modal.innerHTML = `
     <h3>Krypterad export — ${esc(title)}</h3>
     <p style="color:var(--ink-soft);font-size:13px;margin-bottom:12px;">Välj en delningskod (minst ${SHARE_MIN_LEN} tecken, gärna några ord). Mottagaren behöver samma kod för att läsa in texten. Skicka <strong>inte</strong> koden i Slack — lämna den muntligt eller på annat säkert sätt.</p>
     <div class="formgrid">
+      ${SHARE_DUAL ? `<div class="field full"><label>Mottagare</label><select id="shareTarget" onchange="shareTargetChanged()"><option value="company" ${defBat?'':'selected'}>Kompaniet (kompaniets kod)</option><option value="bat" ${defBat?'selected':''}>Bataljonen (bataljonskoden)</option></select></div>` : ''}
       <div class="field full"><label>Delningskod</label><input id="shareCode" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(saved)}"></div>
       <div class="field full"><label>Upprepa delningskoden</label><input id="shareCode2" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(saved)}"></div>
     </div>
@@ -5190,6 +5210,11 @@ async function openShareExport(scope, gid){
     </div>`;
   setTimeout(()=>{ const i=document.getElementById(saved?'shareGoBtn':'shareCode'); if(i) i.focus(); },0);
 }
+function shareTargetChanged(){
+  const t = (document.getElementById('shareTarget')||{}).value;
+  const v = (t==='bat' ? shareExportState.savedB : shareExportState.savedC) || '';
+  ['shareCode','shareCode2'].forEach(id=>{ const e = document.getElementById(id); if(e) e.value = v; });
+}
 async function runShareExport(){
   const c1 = document.getElementById('shareCode').value, c2 = document.getElementById('shareCode2').value;
   const msg = document.getElementById('shareMsg');
@@ -5199,8 +5224,9 @@ async function runShareExport(){
   let blob;
   try{ blob = await encryptShared(shareExportState.plain, c1); }
   catch(e){ msg.textContent = 'Kunde inte kryptera: '+(e.message||e); btn.disabled=false; btn.textContent='Kryptera'; return; }
-  if(document.getElementById('shareRemember').checked) await setRememberedShareCode(c1);
-  else await setRememberedShareCode('');
+  const tgt = (SHARE_DUAL && (document.getElementById('shareTarget')||{}).value==='bat') ? 'bat' : undefined;
+  if(document.getElementById('shareRemember').checked) await setRememberedShareCode(c1, tgt);
+  else await setRememberedShareCode('', tgt);
   const lines = blob.match(/.{1,76}/g).join('\n');
   const text = `🔒 Kompaniregister – krypterad export (${shareExportState.title})${authIdSuffix()}. Läs in i appen med delningskoden.\n\`\`\`\n${lines}\n\`\`\``;
   shareExportState.text = text;
@@ -8404,6 +8430,10 @@ async function authCreateOwner(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', authBoot); else authBoot();
 
 const APP_CHANGELOG = [
+  {version:'2026-10-30.8', title:'Telefon och koder', items:[
+    'Tabellerna i Statistik ryms nu i den vita rutan på telefon. Är en tabell ändå för bred rullar den i sidled inuti rutan.',
+    'Två delningskoder: en för bataljonen och en för kompaniet. Vid export väljer du mottagare. Vid inläsning provas båda sparade koderna.'
+  ]},
   {version:'2026-10-30.7', title:'Placering från bataljonen', items:[
     'Bataljonen kan skicka placering av KompC och Stf KompC. Läs in texten med Importera personal. Övriga rader i ledningsgruppen ändras inte.'
   ]},
@@ -8482,7 +8512,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v25';
+const SW_CACHE_VERSION = 'kompaniregister-v26';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 function maybeShowWhatsNew(){
