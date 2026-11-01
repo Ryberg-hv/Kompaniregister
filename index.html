@@ -3386,8 +3386,24 @@ function renderBackupBanner(){
 }
 
 /* ---------- home view (full-width rows) ---------- */
+/* MALPASE_V1: en tom pluton kan läggas i malpåse och räknas då inte i uppfyllnadsstatistiken */
+function canMalpase(g){ return APP_KEY==='kompani' && !!g && g.unit==='pluton'; }
+function setMalpase(gid, on){
+  const g = getGroup(gid); if(!g || !canMalpase(g)) return;
+  if(on){
+    if(personsInGroup(gid).length){ alert('Plutonen har personal och kan inte läggas i malpåse. Flytta eller ta bort personalen först.'); return; }
+    if(!confirm('Lägga '+g.name+' i malpåse? Plutonen räknas då inte i uppfyllnadsstatistiken. Raderna sparas och plutonen kan tas ur malpåsen igen.')) return;
+    g.malpase = true;
+  } else { delete g.malpase; }
+  saveToDisk(); renderAll();
+}
+function malpaseCard(g){
+  return `<div class="card kind-standard" style="opacity:.8;"><div class="card-head"><div class="card-title"><h3>${esc(g.name)}</h3></div>
+    <div style="display:flex;align-items:center;gap:12px;"><span class="card-count">I malpåse · räknas inte i statistiken</span><button class="btn small" onclick="setMalpase('${g.id}',false)">Ta ur malpåse</button></div></div></div>`;
+}
+function malpaseBtn(g){ return canMalpase(g) && !g.malpase ? `<button class="btn small" ${personsInGroup(g.id).length?'disabled title="Plutonen har personal"':''} onclick="setMalpase('${g.id}',true)">Lägg i malpåse</button>` : ''; }
 function renderHome(){
-  const cards = DATA.groups.map(g=> g.kind==='standard' ? renderStandardCard(g) : renderFlexibleCard(g)).join('');
+  const cards = DATA.groups.map(g=> g.malpase ? malpaseCard(g) : (g.kind==='standard' ? renderStandardCard(g) : renderFlexibleCard(g))).join('');
   const allNotices = NOTICES_CACHE;
   const notices = filterNotices(allNotices);
   const totalPersons = DATA.persons.length;
@@ -3448,6 +3464,7 @@ function renderStandardCard(g){
       <div class="card-title">${collapseBtnHtml(g.id)}<h3 id="gname-${g.id}" onclick="editGroupName('${g.id}')">${esc(g.name)}</h3>${sectionBadge('g:'+g.id)}</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <span class="card-count">${filled}/${g.slots.length} platser fyllda${g.unit ? ' · '+unitImportLabel(g) : ''}</span>
+        ${malpaseBtn(g)}
         <button class="btn small cardOnlyOpen" onclick="openExportModal('group','${g.id}')">Exportera</button>
         <button class="btn small cardOnlyOpen" onclick="openSlackImportModal('${g.id}')">Importera från Slack</button>
         <button class="btn small" onclick="goGroup('${g.id}')">Öppna gruppen →</button>
@@ -4830,6 +4847,9 @@ function renderStats(){
   const isResP = p=>{ const g = getGroup(p.groupId); return !!(g && (g.kind==='reserve' || g.name==='Personalreserv')); };
   const ord = inPluton.filter(p=>!isResP(p));
   const resCount = DATA.persons.filter(isResP).length;
+  const rowGroups = DATA.groups.filter(g=>g.kind==='standard' && !g.malpase && !isResP({groupId:g.id}) && !(typeof isExtGroup==='function' && isExtGroup(g.id)));
+  const rowTotal = rowGroups.reduce((a,g)=>a+(g.slots?g.slots.length:0),0);
+  const malCount = DATA.groups.filter(g=>g.malpase).length;
   const total = ord.length;
   const isChefBefattning = (b)=>{
     const t = normBef(b);
@@ -4846,6 +4866,7 @@ function renderStats(){
     statGoalRow('chef','Antal GrpC (inkl. Stf GrpC)', chefCount),
     statGoalRow('soldat','Antal soldater', soldatCount),
     `<tr><td>Personalreserv (bonus, ingår inte i raderna)</td><td>${resCount}</td><td>–</td><td>–</td></tr>`,
+    `<tr><td>Förbandets rader${malCount?` (${malCount} pluton${malCount>1?'er':''} i malpåse räknas inte)`:''}</td><td>${rowTotal}</td><td>–</td><td>${rowTotal?(Math.round(1000*total/rowTotal)/10)+' % besatta':'–'}</td></tr>`,
   ].join('');
 
   const statCompetencies = DATA.competencies.filter(c=>c.showInStats && !GRUNDUTB_IDS.includes(c.id));
@@ -7276,7 +7297,7 @@ init();
    ===================================================================== */
 let IMPORT_SNAP = null;
 const COMPANY_LIST_OF = {g6:'k7', g7:'k8', g8:'k9'};
-function unitGroups(){ return DATA.groups.filter(g=>g.unit); }
+function unitGroups(){ return DATA.groups.filter(g=>g.unit && !g.malpase); }
 function slotTag(g, slot){ return ''; }
 function slotStartsGroup(g, idx){
   return !!(g && g.unit && idx>0 && g.slots[idx] && g.slots[idx-1] && g.slots[idx].sg!==g.slots[idx-1].sg);
@@ -8662,6 +8683,9 @@ async function authCreateOwner(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', authBoot); else authBoot();
 
 const APP_CHANGELOG = [
+  {version:'2026-11-01.7', title:'Pluton i malpåse', items:[
+    'En tom pluton kan läggas i malpåse och räknas då inte i uppfyllnadsstatistiken. Raderna sparas och plutonen kan tas ur malpåsen igen. Statistiken visar nu förbandets rader och hur många som är besatta.'
+  ]},
   {version:'2026-11-01.6', title:'Personaluppfyllnad', items:[
     'Antal personal, GrpC och soldater räknas nu bara mot förbandets ordinarie rader. Personalreserven visas separat som bonus, så ett förband kan ligga över 100 %.'
   ]},
@@ -8767,7 +8791,7 @@ const APP_CHANGELOG = [
 ];
 const APP_VERSION = APP_CHANGELOG[0].version;
 /* Måste vara samma som VERSION i sw.js. */
-const SW_CACHE_VERSION = 'kompaniregister-v32';
+const SW_CACHE_VERSION = 'kompaniregister-v33';
 const LS_SEEN_VERSION = 'kompaniregister_seen_version';
 var appWasInstalledBefore; // sätts i init(), som körs före den här raden
 /* WHATSNEW_OFF: rutan "Nytt i den här versionen" är avstängd tills vidare. Sätt WHATSNEW_ON = true för att slå på den igen. */
